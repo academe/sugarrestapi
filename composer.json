@@ -1,0 +1,23 @@
+{
+    "name": "academe/sugarrestapi",
+    "description": "A library to talk to the SugarCRM REST API.",
+    "keywords": ["rest", "api", "suagrcrm", "crm"],
+    "homepage": "https://github.com/academe/sugarrestapi",
+    "type": "library",
+    "license": "MIT",
+    "version": "0.9.0",
+    "authors": [
+        {
+            "name": "Jason Judge",
+            "email": "jason@academe.co.uk",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0",
+        "resty/resty": "dev-master"
+    },
+    "autoload": {
+        "psr-0": { "": "classes/" }
+    }
+}
