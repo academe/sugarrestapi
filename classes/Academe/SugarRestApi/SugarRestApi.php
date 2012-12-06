@@ -20,8 +20,8 @@ class SugarRestApi
 
     // The username and password used to log in.
     // To be persisted in the session.
-    public $authUsername = 'user';
-    public $authPassword = 'password';
+    public $authUsername = '';
+    public $authPassword = '';
     public $authVersion = '1';
 
     // The current session ID and the user ID this corresponds to.
@@ -138,9 +138,10 @@ class SugarRestApi
     // Log out of the API.
     // TODO: if we have a session going, then log out of the remote API too, before
     // we discard all the session details locally.
+    // Do not discard the login credentials (username and password) at this point.
     public function logout()
     {
-        $this->clearSession(true);
+        $this->clearSession();
     }
 
     // Get a list of fields for a module.
@@ -194,8 +195,7 @@ class SugarRestApi
         $this->userId = null;
 
         if ($destroyCredentials) {
-            $this->authUsername = null;
-            $this->authPassword = null;
+            $this-setAuth('', '');
         }
     }
 
