@@ -136,6 +136,8 @@ class SugarRestApi
     }
 
     // Log out of the API.
+    // TODO: if we have a session going, then log out of the remote API too, before
+    // we discard all the session details locally.
     public function logout()
     {
         $this->clearSession(true);
