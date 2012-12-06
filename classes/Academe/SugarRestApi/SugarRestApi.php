@@ -12,19 +12,20 @@ class SugarRestApi
     // The rest controller.
     // We will be using resty/resty for now, but I have no idea how generic that is,
     // and so how easily it can be swapped out for something else.
+    // TODO: see if https://github.com/mnapoli/PHP-DI is of any use here.
     public $rest = NULL;
 
     // The URL of the REST entry point.
     public $entryPoint = '{protocol}://{site_domain}/service/v4/rest.php';
 
     // The username and password used to log in.
-    // To be persisted.
+    // To be persisted in the session.
     public $authUsername = 'user';
     public $authPassword = 'password';
     public $authVersion = '1';
 
     // The current session ID and the user ID this corresponds to.
-    // To be persisted.
+    // To be persisted in the session.
     public $sessionId;
     public $userId;
 
@@ -42,6 +43,31 @@ class SugarRestApi
     public $restHeaders = NULL;
     public $restOptions = NULL;
 
+
+    // Get data that should be persisted to
+    // avoid having to log in again on each page requst.
+    public function getJsonData()
+    {
+        return json_encode(array(
+            'authUsername' => $this->authUsername,
+            //$this->authPassword,
+            'authVersion' => $this->authVersion,
+            'sessionId' => $this->sessionId,
+            'userId' => $this->userId,
+        ));
+    }
+
+    // Allow persistent data to be restored from the session.
+    public function __construct($jsonData = '')
+    {
+        if (!empty($jsonData)) {
+            // TODO: is there a better way of masking decoding errors?
+            $data = @json_decode($jsonData, true);
+            if (is_array($data)) {
+                foreach($data as $name => $value) $this->$name = $value;
+            }
+        }
+    }
 
     // Setter/injecter for the rest controller.
     // Perhaps we need to be able to default to resty/resty here, assuming it is set as
@@ -64,7 +90,7 @@ class SugarRestApi
             $this->authUsername = $username;
         }
         if (isset($password)) {
-            if ($this->authPassword = $password) $detailsChanged = true;
+            //if ($this->authPassword = $password) $detailsChanged = true;
             $this->authPassword = $password;
         }
         if (isset($version)) $this->authVersion = $version;
@@ -107,6 +133,12 @@ class SugarRestApi
 
         // We probably want to return a state.
         return $result;
+    }
+
+    // Log out of the API.
+    public function logout()
+    {
+        $this->clearSession(true);
     }
 
     // Get a list of fields for a module.
@@ -154,10 +186,15 @@ class SugarRestApi
     }
 
     // Clear details of the current session, so the next call results in (or requires) a login first.
-    public function clearSession()
+    public function clearSession($destroyCredentials = false)
     {
         $this->sessionId = null;
         $this->userId = null;
+
+        if ($destroyCredentials) {
+            $this->authUsername = null;
+            $this->authPassword = null;
+        }
     }
 
     // Make the REST POST call.
@@ -172,7 +209,7 @@ class SugarRestApi
             'rest_data' => json_encode($data),
         );
 
-        $payload = $this->doCallRest($postData, 'POST');
+        $payload = $this->callRest($postData, 'POST');
 
         // TODO: Here we check that the call succeeded, and raise exceptions as needed.
         return $this->extractPayload($payload);
@@ -181,7 +218,7 @@ class SugarRestApi
     // Perform the REST call.
     // Override this method for other REST libraries.
     // TODO: GET, PUT etc.
-    public function doCallRest($data, $method = 'POST')
+    public function callRest($data, $method = 'POST')
     {
         switch (strtoupper($method)) {
             case 'POST':
