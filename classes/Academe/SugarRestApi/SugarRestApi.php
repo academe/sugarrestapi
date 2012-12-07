@@ -50,11 +50,27 @@ class SugarRestApi
     {
         return json_encode(array(
             'authUsername' => $this->authUsername,
+            // Don't store the password, as it could end up being scattered over
+            // session tables and other storage.
             //$this->authPassword,
             'authVersion' => $this->authVersion,
             'sessionId' => $this->sessionId,
             'userId' => $this->userId,
+            // Save the name of the REST class.
+            'restClass' => get_class($this->rest),
         ));
+    }
+
+    // When conveting to a string for storage, return the object as a json structure.
+    public function __toString()
+    {
+        return $this->getJsonData();
+    }
+
+    // Set the REST entry point URL
+    public function setEntryPoint($url)
+    {
+        $this->entryPoint = $url;
     }
 
     // Allow persistent data to be restored from the session.
@@ -64,7 +80,14 @@ class SugarRestApi
             // TODO: is there a better way of masking decoding errors?
             $data = @json_decode($jsonData, true);
             if (is_array($data)) {
-                foreach($data as $name => $value) $this->$name = $value;
+                foreach($data as $name => $value) {
+                    // Restore the REST class, if it can be instantiated.
+                    if ($name == 'restClass' && class_exists($value)) {
+                        $this->rest = new $value();
+                    } elseif (property_exists($this, $name)) {
+                        $this->$name = $value;
+                    }
+                }
             }
         }
     }
