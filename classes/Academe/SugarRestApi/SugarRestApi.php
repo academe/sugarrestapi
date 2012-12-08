@@ -1,8 +1,8 @@
 <?php
 
 /**
- * TODO: some properties need to persist from one page to another, to avoid
- * having to log in over and over. The sessionId is the main thing.
+ * @todo some properties need to persist from one page to another, to avoid
+ * having to log in over and over. The sessionId is the main thing. [done, but needs review]
  */
 
 namespace Academe\SugarRestApi;
@@ -42,6 +42,18 @@ class SugarRestApi
     // Default headers and options for the REST controller.
     public $restHeaders = NULL;
     public $restOptions = NULL;
+
+    // Details of any error message.
+    public $error = array(
+        'name' => '',
+        'number' => '',
+        'description' => '',
+    );
+
+    // Automatically log out when we close.
+    // If true, an attempt is made to log out before the object is destroyed.
+    // If false, the remote API session is kept open and can be used on the next page request.
+    public $autologout = false;
 
 
     // Get data that should be persisted to
@@ -92,6 +104,12 @@ class SugarRestApi
         }
     }
 
+    // Autologout, if required.
+    public function __destruct()
+    {
+        if ($this->autologout) $this->logout;
+    }
+
     // Setter/injecter for the rest controller.
     // Perhaps we need to be able to default to resty/resty here, assuming it is set as
     // a dependancy.
@@ -123,70 +141,6 @@ class SugarRestApi
         if ($detailsChanged) {
             $this->clearSession();
         }
-    }
-
-    // Log into the CRM.
-    // TODO: if the sessionId is already set, then check we are logged in as the
-    // correct user, so we don't need to log in again.
-    public function login($username = NULL, $password = NULL)
-    {
-        // Save the username and password so we know if we are logging in as a different user.
-        $this->setAuth($username, $password);
-
-        // Check if we have a valid session. If we do then no further login is needed.
-        // TODO: what should we return here? We are logged in, but have not gone to fetch user details.
-        if ($this->validateSession()) return;
-
-        $parameters = array(
-            'user_auth' => array(
-                'user_name' => $this->authUsername,
-                'password' => md5($this->authPassword),
-                'version' => $this->authVersion,
-            ),
-            'application_name' => $this->applicationName,
-            'name_value_list' => array(),
-        ); 
-
-        // TODO: extract the session ID and user ID, if login was successful.
-        // TODO: raise exception (if appropriate) if login not successful.
-        $result = $this->apiPost('login', $parameters);
-
-        $this->sessionId = $result['id'];
-        $this->userId = $result['name_value_list']['user_id']['value'];
-
-        // We probably want to return a state.
-        return $result;
-    }
-
-    // Log out of the API.
-    // TODO: if we have a session going, then log out of the remote API too, before
-    // we discard all the session details locally.
-    // Do not discard the login credentials (username and password) at this point.
-    public function logout()
-    {
-        $this->clearSession();
-    }
-
-    // Get a list of fields for a module.
-    public function getModuleFields($moduleName, $fieldList = array())
-    {
-        $parameters = array(
-            'session' => $this->sessionId,
-            'module_name' => $moduleName,
-            'fields' => $fieldList,
-        );
-
-        return $this->apiPost('get_module_fields', $parameters);
-    }
-
-    // Get the current user ID, given the session.
-    public function getUserId()
-    {
-        $parameters = array(
-            'session' => $this->sessionId,
-        );
-
-        return $this->apiPost('get_user_id', $parameters);
     }
 
     // Validate the current session.
@@ -256,6 +210,7 @@ class SugarRestApi
     // This function is given whatever the result is of the REST call.
     // Override this method if a different REST library is used and the payload
     // is extracted in a different way.
+    // Also detect errors in the return value.
     public function extractPayload($returnData)
     {
         // TODO: check that there is valid data first.
@@ -265,7 +220,24 @@ class SugarRestApi
         if (isset($returnData['body'])) {
             // TODO: if this is not decodable JSON?
             // CHECKME: do we want to decode to arraus or objects?
+            // CHECKME: why isn't this automatically decoded already by Resty? It should be.
+            // CHECKME: why does Resty always return "error"=>true? What does that mean?
             $decodeBody = json_decode($returnData['body'], true);
+
+            // Errors are returned as a triplet of properties: name, number and description.
+            // If we find these three, then assue an error has occurred and the method call was
+            // not successful.
+            if (
+                count($decodeBody) == 3 
+                && isset($decodeBody['name']) 
+                && isset($decodeBody['number']) 
+                && isset($decodeBody['description'])
+            ) {
+                $this->error = $decodeBody;
+            } else {
+                $this->error['number'] = '';
+            }
+
             return $decodeBody;
         } else {
             // No body set.
@@ -273,5 +245,181 @@ class SugarRestApi
         }
 
         return null;
+    }
+
+    // Indicate whether the last method call was successful or not.
+    // Returns true if successful.
+    public function success()
+    {
+        return ($this->error['number'] == '');
+    }
+
+    // Returns the error details, an array of name, number and description.
+    public function error()
+    {
+        if ($this->success) {
+            return array(
+                'name' => '',
+                'number' => '',
+                'description' => '',
+            );
+        } else {
+            return $this->error;
+        }
+    }
+
+    // Main API methods.
+
+    // Log into the CRM.
+    // TODO: if the sessionId is already set, then check we are logged in as the
+    // correct user, so we don't need to log in again.
+    // Returns true if successful.
+    public function login($username = NULL, $password = NULL)
+    {
+        // Save the username and password so we know if we are logging in as a different user.
+        $this->setAuth($username, $password);
+
+        // Check if we have a valid session. If we do then no further login is needed.
+        if ($this->validateSession()) return true;
+
+        $parameters = array(
+            'user_auth' => array(
+                'user_name' => $this->authUsername,
+                'password' => md5($this->authPassword),
+                'version' => $this->authVersion,
+            ),
+            'application_name' => $this->applicationName,
+            'name_value_list' => array(),
+        ); 
+
+        // Attempt to log in.
+        $result = $this->apiPost('login', $parameters);
+
+        if ($this->success()) {
+            // Extract the session ID and user ID.
+            $this->sessionId = $result['id'];
+            $this->userId = $result['name_value_list']['user_id']['value'];
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // Log out of the API.
+    // TODO: if we have a session going, then log out of the remote API too, before
+    // we discard all the session details locally.
+    // Do not discard the login credentials (username and password) at this point.
+    public function logout()
+    {
+        // If the session is open to the CRM, then log out of that.
+        if (isset($this->sessionId)) {
+            $parameters = array(
+                'session' => $this->sessionId,
+            );
+            $this->apiPost('logout', $parameters);
+        }
+
+        $this->clearSession();
+    }
+
+    // Get a list of fields for a module.
+    public function getModuleFields($moduleName, $fieldList = array())
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_name' => $moduleName,
+            'fields' => $fieldList,
+        );
+
+        return $this->apiPost('get_module_fields', $parameters);
+    }
+
+    // Get the current user ID, given the session.
+    public function getUserId()
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+        );
+
+        return $this->apiPost('get_user_id', $parameters);
+    }
+
+    // Retrieve a list of SugarBean based on provided IDs.
+    // This API will not wotk with report module.
+    // Each SugarBean will inckude an array of name/value pairs in the array 'name_value_list', but
+    // not as an associative array. It may be helpful to convert this to an associative
+    // array for each bean returned. The key/value pair structure is great for other languages that
+    // don't have associatived arrays, such as C#, and converts easily into dictionary structures.
+    // But that is not so easy to handle in PHP.
+    // A supplied ID that does not mnatch a Sugarbean that the user can access, will return with
+    // a "warning" name/value pair explaining why.
+    public function getEntries($moduleName, $ids = array(), $selectFields = array(), $linkNameFields = array())
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_name' => $moduleName,
+            'ids' => $ids,
+            'select_fields' => $selectFields,
+            'link_name_to_fields_array' => $linkNameFields,
+        );
+
+        return $this->apiPost('get_entries', $parameters);
+    }
+
+    // Retrieve a list of beans.
+    // This is the primary method for getting list of SugarBeans from Sugar.
+    public function getEntryList($moduleName, $query = NULL, $order = NULL, $offset = 0, $fields = array(), $linkNameFields = array(), $limit = NULL, $deleted = false, $favourites = false)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_name' => $moduleName,
+            'query' => $query,
+            'order_by' => $order,
+            'offset' => $offset,
+            'select_fields' => $fields,
+            'link_name_to_fields_array' => $linkNameFields,
+            'max_results' => $limit,
+            'deleted' => $deleted,
+            'favorites' => $favourites,
+        );
+
+        return $this->apiPost('get_entry_list', $parameters);
+    }
+
+    // Retrieve the layout metadata for a given modules given a specific types and views.
+    // Types include: default, wireless
+    // Views include: edit, detail, list, subpanel
+    public function getModuleLayout($moduleNames, $types = array('default'), $views = array('detail'), $aclCheck = true, $md5 = false)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'a_module_names' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
+            'a_type' => (is_string($types) ? array($types) : $types),
+            'a_view' => (is_string($views) ? array($views) : $views),
+            'acl_check' => $aclCheck,
+            'md5' => $md5
+        );
+
+        return $this->apiPost('get_module_layout', $parameters);
+    }
+
+    // Search modules.
+    // At least one module must be supplied.
+    // Supported modules are Accounts, Bug Tracker, Cases, Contacts, Leads, Opportunities, Project, ProjectTask, Quotes.
+    public function searchByModule($searchString, $moduleNames, $offset = 0, $limit = NULL, $assignedUserId = NULL, $fields = array(), $unifiedSearchOnly = true, $favourites = false)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'search_string' => $searchString,
+            'modules' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
+            'offset' => $offset,
+            'nax_results' => $limit,
+            'assigned_user_id' => $assignedUserId,
+            'select_fields' => $fields,
+            'unified_search_only' => $unifiedSearchOnly,
+            'favorites' => $favourites,
+        );
+
+        return $this->apiPost('search_by_module', $parameters);
     }
 }
