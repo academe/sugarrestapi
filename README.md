@@ -8,11 +8,14 @@ This is work-in-progress, with a long list of TODOs.
 ## Example Use
 
     require 'vendor/autoload.php';
-    $jsonData = /persistence data retrieved from the session/
+    $jsonData = ... // persistence data retrieved from the session
     $sugarApi = new Academe\SugarRestApi\SugarRestApi($jsonData);
     
-    $rest = new Resty();
-    $sugarApi->setRest($rest);
+    // The REST class may have been restored with the persistence jsonData.
+    if (!isset($sugarApi->rest)) {
+        $rest = new Resty();
+        $sugarApi->setRest($rest);
+    }
     
     $sugarApi->entryPoint = 'http://example.com/service/v4/rest.php';
     
@@ -23,6 +26,8 @@ This is work-in-progress, with a long list of TODOs.
     $ContactsModuleFields = $sugarApi->getModuleFields('Contacts');
     
     $jsonData = $sugarApi->getJsonData();
+    // or
+    $jsonData = (string)$sugarApi;
     // Now store $jsonData in the session so we can pull it in on the next page.
 
 ## TODOs
