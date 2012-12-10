@@ -3,6 +3,8 @@
 /**
  * @todo some properties need to persist from one page to another, to avoid
  * having to log in over and over. The sessionId is the main thing. [done, but needs review]
+ * @todo Automatically transform name/value pairs to associative arrays in get-methods.
+ * @todo A general parameter validation framework to check data before it is passed on.
  */
 
 namespace Academe\SugarRestApi;
@@ -178,7 +180,7 @@ class SugarRestApi
 
     // Make the REST POST call.
     // We aim to return the payload, decoded into an array.
-    public function apiPost($method, $data)
+    public function apiPost($method, $data = array())
     {
         // Wrap the data in a standard structure.
         $postData = array(
@@ -421,5 +423,332 @@ class SugarRestApi
         );
 
         return $this->apiPost('search_by_module', $parameters);
+    }
+
+    // Get OAuth request token
+    public function oauthRequestToken()
+    {
+        return $this->apiPost('oauth_request_token');
+    }
+
+    // Get OAuth access token
+    public function oauthAccessToken()
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+        );
+
+        return $this->apiPost('oauth_access', $parameters);
+    }
+
+    // Get next job from the queue
+    public function jobQueueNext($clientId)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'clientid ' => $clientId,
+        );
+
+        return $this->apiPost('job_queue_next', $parameters);
+    }
+
+    // Run cleanup and schedule.
+    public function jobQueueCycle($clientId)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'clientid ' => $clientId,
+        );
+
+        return $this->apiPost('job_queue_cycle', $parameters);
+    }
+
+    // Run job from queue.
+    public function jobQueueRun($jobId, $clientId)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'jobid ' => $jobId,
+            'clientid ' => $clientId,
+        );
+
+        return $this->apiPost('job_queue_run', $parameters);
+    }
+
+    // Retrieve a single SugarBean based on ID.
+    public function getEntry($moduleName, $id, $fields = array(), $linkNameFields = array(), $trackView = false)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_name' => $moduleName,
+            'id' => $id,
+            'select_fields' => $fields,
+            'link_name_to_fields_array' => $linkNameFields,
+            'track_view' => $trackView,
+        );
+
+        return $this->apiPost('get_entry', $parameters);
+    }
+
+    // Retrieve the md5 hash of the vardef entries for a particular module.
+    public function getModuleFieldsMd5($moduleName)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_name' => $moduleName,
+        );
+
+        return $this->apiPost('get_module_fields_md5', $parameters);
+    }
+
+    // Retrieve the md5 hash of a layout metadata for a given module given a specific type and view.
+    // Types include: default, wireless
+    // Views include: edit, detail, list, subpanel
+    public function getModuleLayoutMd5($moduleNames, $types = array('default'), $views = array('detail'), $aclCheck = true)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_name' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
+            'type' => (is_string($types) ? array($types) : $types),
+            'view' => (is_string($views) ? array($views) : $views),
+            'acl_check' => $aclCheck,
+        );
+
+        return $this->apiPost('get_module_layout_md5', $parameters);
+    }
+
+    // Update or create a single SugarBean.
+    public function setEntry($moduleName, $data, $trackView = false)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_name' => $moduleName,
+            'name_value_list' => $data,
+            'track_view' => $trackView,
+        );
+
+        return $this->apiPost('set_entry', $parameters);
+    }
+
+    // Retrieve the list of available modules on the system available to the currently logged in user.
+    // filter is all, default or mobile
+    public function getAvailableModules($failter = 'all', $moduleNames = array())
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'filter' => $filter,
+            'modules' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
+        );
+
+        return $this->apiPost('get_available_modules', $parameters);
+    }
+
+    // ???
+    // @todo check if the MD5 parameter should be upper case.
+    public function getLanguageDefinition($moduleNames = array(), $md5 = false)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'modules' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
+            'MD5' => $md5,
+        );
+
+        return $this->apiPost('get_language_definition', $parameters);
+    }
+
+    // Get server information.
+    public function getServerInfo()
+    {
+        return $this->apiPost('get_server_info');
+    }
+
+    // Retrieve a list of recently viewed records by a module.
+    // Documentation on this one is not clear. Multiple modules can be supplied, but
+    // the returned results will vary depending on the order of the modules in the array.
+    public function getLastViewed($moduleNames = array())
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_names' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
+        );
+
+        return $this->apiPost('get_last_viewed', $parameters);
+    }
+
+    // Retrieve a list of upcoming activities including Calls, Meetings,Tasks and Opportunities.
+    public function getUpcomingActivities()
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+        );
+
+        return $this->apiPost('get_upcoming_activities', $parameters);
+    }
+
+    // Retrieve a collection of beans that are related to the specified bean and optionally return
+    // relationship data for those related beans.
+    public function getRelationships($moduleName, $beanId, $linkFieldName, $relatedModuleQuery, $relatedFields, $relatedModuleLinkNameFields, $deleted = false, $orderBy = '')
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_name' => $moduleName,
+            'module_id' => $beanId,
+            'link_field_name' => $linkFieldName,
+            'related_module_query' => $relatedModuleQuery,
+            'related_fields' => $relatedFields,
+            'related_module_link_name_to_fields_array' => $relatedModuleLinkNameFields,
+            'deleted' => $deleted,
+            'order_by' => $orderBy,
+        );
+
+        return $this->apiPost('get_relationships', $parameters);
+    }
+
+    // Set a single relationship between two beans. The items are related by module name and id.
+    public function setRelationship($moduleName, $beanId, $linkFieldName, $relatedIds, $data, $delete = 0)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_name' => $moduleName,
+            'module_id' => $beanId,
+            'link_field_name' => $linkFieldName,
+            'related_ids' => $relatedIds,
+            'name_value_list' => $data,
+            'delete' => $delete,
+        );
+
+        return $this->apiPost('set_relationship', $parameters);
+    }
+
+    // Set a single relationship between two beans. The items are related by module name and id.
+    // @todo Description is wrong.
+    public function setRelationships($moduleNames, $beanIds, $linkFieldNames, $relatedIds, $data, $delete = array())
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_names' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
+            'module_ids' => (is_string($beanIds) ? array($beanIds) : $beanIds),
+            'link_field_names' => $linkFieldNames,
+            'related_ids' => $relatedIds,
+            'name_value_lists' => $data,
+            'delete_array' => $delete,
+        );
+
+        return $this->apiPost('set_relationships', $parameters);
+    }
+
+    // Update or create a list of SugarBeans
+    public function updateEntries($moduleName, $data)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_name' => $moduleName,
+            'name_value_lists' => $data,
+        );
+
+        return $this->apiPost('update_entries', $parameters);
+    }
+
+    // Perform a seamless login. This is used internally during the sync process.
+    public function seamlessLogin()
+    {
+        return $this->apiPost('seamless_login');
+    }
+
+    // Add or replace the attachment on a Note.
+    // Optionally you can set the relationship of this note to Accounts/Contacts and so on by 
+    // setting related_module_id, related_module_name.
+    public function setNoteAttachment($id_or_note, $filename = '', $fileContent = '', $moduleId = '', $moduleName = '')
+    {
+        if (is_array($id_or_note)) {
+            $note = $id_or_note;
+        } else {
+            $note = array(
+                'id' => $id,
+                'filename' => $filename,
+                'file' => $fileContent,
+                'related_module_id' => $moduleId,
+                'related_module_name' => $moduleName,
+            );
+        }
+
+        $parameters = array(
+            'session' => $this->sessionId,
+            'note' => $note,
+        );
+
+        return $this->apiPost('set_note_attachment', $parameters);
+    }
+
+    // Retrieve an attachment from a note.
+    public function getNoteAttachment($id)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'id' => $id,
+        );
+
+        return $this->apiPost('get_note_attachment', $parameters);
+    }
+
+    // Sets a new revision for this document.
+    public function setDocumentRevision($id_or_revision, $documentName = '', $revision = '', $filename = '', $fileContent = '')
+    {
+        if (is_array($id_or_revision)) {
+            $revision = $id_or_revision;
+        } else {
+            $revision = array(
+                'id' => $id_or_revision,
+                'document_name' => $documentName,
+                'revision' => $revision,
+                'filename' => $filename,
+                'file' => $fileContent,
+            );
+        }
+
+        $parameters = array(
+            'session' => $this->sessionId,
+            'document_revision' => $revision,
+        );
+
+        return $this->apiPost('set_document_revision', $parameters);
+    }
+
+    // This method is used as a result of the .htaccess lock down on the cache directory.
+    // It will allow a properly authenticated user to download a document that they have
+    // proper rights to download.
+    public function getDocumentRevision($id)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'id' => $id,
+        );
+
+        return $this->apiPost('get_document_revision', $parameters);
+    }
+
+    // Once we have successfuly done a mail merge on a campaign, we need to notify
+    // Sugar of the targets and the campaign_id for tracking purposes.
+    public function setCampaignMerge($targets, $campaignId)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'targets' => $targets,
+            'campaign_id' => $campaignId,
+        );
+
+        return $this->apiPost('set_campaign_merge', $parameters);
+    }
+
+    public function getEntriesCount($moduleName, $campaignId, $query, $deleted = false)
+    {
+        $parameters = array(
+            'session' => $this->sessionId,
+            'module_name' => $moduleName,
+            'query' => $query,
+            'deleted' => $deleted,
+        );
+
+        return $this->apiPost('get_entries_count', $parameters);
     }
 }
