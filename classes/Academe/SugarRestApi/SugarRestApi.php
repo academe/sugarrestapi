@@ -1,9 +1,9 @@
 <?php
 
 /**
- * @todo some properties need to persist from one page to another, to avoid
- * having to log in over and over. The sessionId is the main thing. [done, but needs review]
  * @todo A general parameter validation framework to check data before it is passed on.
+ * @todo Handle data as recources (e.g. User, Contact, Address, Note) rather than just 
+ * as multidimensional arrays that need significant parsing.
  */
 
 namespace Academe\SugarRestApi;
