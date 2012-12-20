@@ -48,9 +48,8 @@ class v4 extends SugarRestApi
     }
 
     // Log out of the API.
-    // TODO: if we have a session going, then log out of the remote API too, before
+    // If we have a session going, then log out of the remote API too, before
     // we discard all the session details locally.
-    // Do not discard the login credentials (username and password) at this point.
     public function logout()
     {
         // If the session is open to the CRM, then log out of that.
