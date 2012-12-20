@@ -37,7 +37,7 @@ class v4 extends SugarRestApi
         // Attempt to log in.
         $result = $this->apiPost('login', $parameters);
 
-        if ($this->success()) {
+        if ($this->isSuccess()) {
             // Extract the session ID and user ID.
             $this->sessionId = $result['id'];
             $this->userId = $result['name_value_list']['user_id']['value'];

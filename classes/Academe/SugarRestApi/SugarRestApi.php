@@ -214,7 +214,7 @@ class SugarRestApi
         $result = $this->extractPayload($payload);
 
         // Find any name/value lists and transform the, into key/value lists for convenience.
-        $this->transform_name_value_lists($result);
+        $this->transformNameValueLists($result);
         return $result;
     }
 
@@ -276,7 +276,7 @@ class SugarRestApi
 
     // Indicate whether the last method call was successful or not.
     // Returns true if successful.
-    public function success()
+    public function isSuccess()
     {
         return ($this->error['number'] == '');
     }
@@ -284,7 +284,7 @@ class SugarRestApi
     // Returns the error details, an array of name, number and description.
     public function error()
     {
-        if ($this->success) {
+        if ($this->isSuccess) {
             return array(
                 'name' => '',
                 'number' => '',
@@ -297,15 +297,15 @@ class SugarRestApi
 
     // Search the result for name_value_list elements and expand it into
     // key/value pairs in the element key_value_list.
-    public function transform_name_value_lists(&$data)
+    public function transformNameValueLists(&$data)
     {
         if (!is_array($data)) return;
 
         // Start walking the array.
-        array_walk($data, array(&$this, 'transform_name_value_lists_callback'));
+        array_walk($data, array(&$this, 'transformNameValueListsCallback'));
     }
 
-    private function transform_name_value_lists_callback(&$value, $key)
+    private function transformNameValueListsCallback(&$value, $key)
     {
         // Only look at arrays - we don't care about leaf nodes.
         if (is_array($value)) {
@@ -319,7 +319,7 @@ class SugarRestApi
             } else {
                 // The array element does not have a name_value_list element, so we will
                 // walk it to see if there are any at a deeper level.
-                array_walk($value, array(&$this, 'transform_name_value_lists_callback'));
+                array_walk($value, array(&$this, 'transformNameValueListsCallback'));
             }
         }
     }

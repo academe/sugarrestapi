@@ -31,9 +31,16 @@ This is work-in-progress, with a long list of TODOs.
     
     // A login will only be done if the persisted session is no longer
     // valid for any reason, or we are logging in as a different user.
-    $sugarApi->login('User Name', 'password');
+    // The result will be true or false, indicating you are now, or were
+    // already, logged in.
+    // or not.
+    $loginSuccess = $sugarApi->login('User Name', 'password');
     
     $ContactsModuleFields = $sugarApi->getModuleFields('Contacts');
+    
+    if (!$sugarApi->isSuccess()) {
+        $errorDetails = $sugarApi->error();
+    }
     
     $jsonData = $sugarApi->getJsonData();
     // or
