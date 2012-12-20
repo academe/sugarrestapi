@@ -56,7 +56,10 @@ exceptions are not the way to go for this kind of library.
 getting to grips with how composer works, and following general conventions other people follow.
 * Create some objects for the resources, i.e. contacts, accounts, etc. instead of just dealing 
 with big lumps of array data. This could lead on to persistent objects; fetch a contact object, 
-update it, ask it to save itself.
+update it, ask it to save itself. A good start will be classes for generic entities (modules) 
+and relationships. These can then be extended with more specific classes if needed. A factory 
+method could handle that so you only need to know the module name and not the name of the 
+entity class you get back.
 * Add PSR3 compatible logging.
 
 
