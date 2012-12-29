@@ -13,10 +13,10 @@ This is work-in-progress, with a long list of TODOs.
 ## Example Use
 
     require 'vendor/autoload.php';
-    $jsonData = ... // persistence data retrieved from the session
-    $sugarApi = new Academe\SugarRestApi\v4($jsonData);
+    $sessionData = ... // persistence data retrieved from the session
+    $sugarApi = new Academe\SugarRestApi\v4($sessionData);
     
-    // The REST class may have been restored with the persistence jsonData.
+    // The REST class may have been restored with the persistence sessionData.
     if (!isset($sugarApi->rest)) {
         $rest = new Resty();
         $sugarApi->setRest($rest);
@@ -42,10 +42,10 @@ This is work-in-progress, with a long list of TODOs.
         $errorDetails = $sugarApi->error();
     }
     
-    $jsonData = $sugarApi->getJsonData();
+    $sessionData = $sugarApi->getSession();
     // or
-    $jsonData = (string)$sugarApi;
-    // Now store $jsonData in the session so we can pull it in on the next page.
+    $sessionData = (string)$sugarApi;
+    // Now store $sessionData in the session so we can pull it in on the next page.
 
 ## TODOs
 

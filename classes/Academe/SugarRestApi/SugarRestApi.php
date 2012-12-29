@@ -65,7 +65,7 @@ class SugarRestApi
 
     // Get data that should be persisted to
     // avoid having to log in afresh on each page request.
-    public function getJsonData()
+    public function getSession()
     {
         return json_encode(array(
             'authUsername' => $this->authUsername,
@@ -83,7 +83,7 @@ class SugarRestApi
     // When conveting to a string for storage, return the object as a json structure.
     public function __toString()
     {
-        return $this->getJsonData();
+        return $this->getSession();
     }
 
     // Set the REST entry point URL
@@ -106,11 +106,11 @@ class SugarRestApi
     }
 
     // Allow persistent data to be restored from the session.
-    public function __construct($jsonData = '')
+    public function __construct($session = '')
     {
-        if (!empty($jsonData)) {
+        if (!empty($session)) {
             // TODO: is there a better way of masking decoding errors?
-            $data = @json_decode($jsonData, true);
+            $data = @json_decode($session, true);
             if (is_array($data)) {
                 foreach($data as $name => $value) {
                     // Restore the REST class, if it can be instantiated.

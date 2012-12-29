@@ -94,6 +94,8 @@ class v4 extends SugarRestApi
     // But that is not so easy to handle in PHP.
     // A supplied ID that does not mnatch a Sugarbean that the user can access, will return with
     // a "warning" name/value pair explaining why.
+    // TODO: this warning should perhaps be detected and put into the error log, or the record should
+    // simply by discarded.
     public function getEntries($moduleName, $ids = array(), $selectFields = array(), $linkNameFields = array())
     {
         $parameters = array(
