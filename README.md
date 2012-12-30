@@ -47,6 +47,30 @@ This is work-in-progress, with a long list of TODOs.
     $sessionData = (string)$sugarApi;
     // Now store $sessionData in the session so we can pull it in on the next page.
 
+There is now an Entry class used for a SugarCRM entry - a single record from a module. It can be
+used like this:
+
+    ...
+    // If we know the ID, this will fetch the entry and return it as an object:
+    $Contact = $sugarApi->newEntry('Contacts')
+        ->get('11420eb6-ce89-e467-596a-50b7892b8b10');
+    // Add a suffix to the title of the contact.
+    $Contact->title .= ' [MARKED]';
+    // Save it back to the CRM.
+    $Contact->save();
+    
+or if an entry has been fetched from another API, as a list for example:
+    
+    // Get the first 10 contacts.
+    $list = $sugarApi->getEntryList('Contacts', '', '', 0, array(), '', 10, false, false);
+    $entries = array();
+    // Put the contacts into the entries array as Entry objects.
+    foreach($list['entry_list'] as $entry) {
+        $entries[] = $sugarApi->newEntry('Contacts')
+            ->setEntry($entry);
+    }
+
+
 ## TODOs
 
 * Example to show handling of persistence of session and user IDs needed (memcached or APC, 

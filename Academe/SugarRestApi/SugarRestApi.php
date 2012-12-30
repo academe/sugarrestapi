@@ -214,7 +214,9 @@ class SugarRestApi
         $result = $this->extractPayload($payload);
 
         // Find any name/value lists and transform the, into key/value lists for convenience.
-        $this->transformNameValueLists($result);
+        // Note: we will probably not do this here any more. The entry object can transform as required.
+        //$this->transformNameValueLists($result);
+
         return $result;
     }
 
@@ -322,5 +324,22 @@ class SugarRestApi
                 array_walk($value, array(&$this, 'transformNameValueListsCallback'));
             }
         }
+    }
+
+    // Return a new entity object.
+    // We need to expand this to more of a factory so that the returned
+    // class is relevant to the entity module and not simply generic.
+    // $entry is an entry already fetched from the CRM via the API.
+    public function newEntry($module)
+    {
+        $Entry = new Entry();
+
+        // Give it access to this API.
+        $Entry->setApi(&$this);
+
+        // Set the module if not already set.
+        $Entry->setModule($module);
+
+        return $Entry;
     }
 }
