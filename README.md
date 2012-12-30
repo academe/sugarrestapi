@@ -70,6 +70,10 @@ or if an entry has been fetched from another API, as a list for example:
             ->setEntry($entry);
     }
 
+Each entry can be modified and saved back to the CRM as required. All the entries reference the
+API object that created them. This should save some memory, ensure sessions are opened and closed
+in one shared place, and I/O and errors will be recorded in one place (so be aware each action on
+an entry that uses the API will overwrite the shared API object).
 
 ## TODOs
 
