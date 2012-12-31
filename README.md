@@ -53,6 +53,7 @@ used like this:
     ...
     // If we know the ID, this will fetch the entry and return it as an object:
     $Contact = $sugarApi->newEntry('Contacts')
+        ->setFieldlist('first_name', 'last_name', 'title')
         ->get('11420eb6-ce89-e467-596a-50b7892b8b10');
     // Add a suffix to the title of the contact.
     $Contact->title .= ' [MARKED]';
@@ -94,5 +95,7 @@ and relationships. These can then be extended with more specific classes if need
 method could handle that so you only need to know the module name and not the name of the 
 entity class you get back.
 * Add PSR3 compatible logging.
+* Some cacheing would be good. Cacheing of the CRM version and capabilities, inluding the 
+fields and structure of the modules and relationships.
 
 
