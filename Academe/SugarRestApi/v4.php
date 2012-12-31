@@ -482,7 +482,7 @@ class v4 extends SugarRestApi
         return $this->apiPost('set_campaign_merge', $parameters);
     }
 
-    public function getEntriesCount($moduleName, $campaignId, $query, $deleted = false)
+    public function getEntriesCount($moduleName, $query, $deleted = false)
     {
         $parameters = array(
             'session' => $this->sessionId,

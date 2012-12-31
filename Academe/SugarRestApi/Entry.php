@@ -5,6 +5,8 @@
  * This class represents a single item.
  * To start we will just deal with the underlying data. Making dropdown lists available,
  * and providing relationship data will come next.
+ *
+ * @todo Some handy ways to handle timestamps.
  */
 
 namespace Academe\SugarRestApi;
@@ -34,12 +36,13 @@ class Entry
     public $_fields;
 
     // List of fields we want to deal with. Leave null to do all fields.
-    public $_fieldList = null;
+    public $_fieldlist = array();
 
     // If dirty, then data needs to be written to the database.
     public $_dirty = false;
 
     // Convert a name_value_list to a a key/value array.
+    // At may be worth moving this to the SugarRestApi API class.
     public function nameValueListToArray($nameValueList)
     {
         $array = array();
@@ -60,7 +63,7 @@ class Entry
         if (empty($entry) || !is_array($entry)) return;
 
         // If the module has already been set, then the entry data most be for the same module.
-        if (isset($this->_module) && $this->_module != $entry['module_name']) {
+        if (!empty($this->_module) && !empty($entry['module_name']) && $this->_module != $entry['module_name']) {
             // TODO: raise an error.
             return;
         }
@@ -76,6 +79,8 @@ class Entry
             $this->_fields = $entry['key_value_list'];
         } elseif (isset($entry['name_value_list'])) {
             $this->_fields = $this->nameValueListToArray($entry['name_value_list']);
+        } elseif (isset($entry['entry_list'])) {
+            $this->_fields = $this->nameValueListToArray($entry['entry_list']);
         } else {
             $this->_fields = array();
         }
@@ -91,12 +96,11 @@ class Entry
         $this->_api =& $api;
     }
 
-    // If creating a record from scratch, then this is done here.
+    // If creating a record from scratch, then multiple fields can be set here.
     // This is a record not yet saved to the CRM.
     // Data is a key/value array.
-    public function setRecord($module, $fields = array())
+    public function setFields($fields = array())
     {
-        $this->_module = $module;
         $this->_dirty = true;
         $this->_fields = $fields;
     }
@@ -116,6 +120,7 @@ class Entry
     }
 
     // Set a field value.
+    // TODO: record which fields have been updated.
     public function __set($name, $value)
     {
         $this->_fields[$name] = $value;
@@ -161,6 +166,9 @@ class Entry
         // TODO: Raise an error if we don't have a reference to the API object.
         if (!is_object($this->_api)) return false;
 
+        // TODO: raise an error if we haven't been told what module this is for.
+        if (empty($this->_module)) return;
+
         // TODO: find out what to do with this.
         $trackView = false;
 
@@ -168,15 +176,16 @@ class Entry
         $entry = $this->_api->setEntry($this->_module, $this->_fields, $trackView);
 
         // Save the updated fields in the object and mark as not dirty.
-        // TODO: do we want to filter these fields according to fieldList?
-        if (!$this->_api->isSuccess()) {
+        if ($this->_api->isSuccess()) {
+            // We get back the saved fields that we sent, along with any validation that
+            // may have been applied to them.
             $this->setEntry($entry);
         }
 
         return $this->_api->isSuccess();
     }
 
-    // Set the module for this generic entry.
+    // Set the module for this generic entry object.
     // The module can only be set once and not changed.
     public function setModule($module)
     {
@@ -195,12 +204,45 @@ class Entry
         $linkNameFields = array();
 
         // Fetch the entry.
-        $entry = $this->_api->getEntry($this->_module, $id, $this->_fields, $linkNameFields, $trackView);
+        $entry = $this->_api->getEntry($this->_module, $id, $this->_fieldlist, $linkNameFields, $trackView);
 
         if ($this->_api->isSuccess() && !empty($entry['entry_list'])) {
             $this->setEntry(reset($entry['entry_list']));
         }
 
         return $this;
+    }
+
+    // Set the fields we will be dealing with.
+    // Pass in an array of field names or a parameter list.
+    // e.g. ->setFieldlist('first_name', 'last_name')
+    // This method will overwrite the complete list.
+    public function setFieldlist()
+    {
+        $args = func_get_args();
+        if (func_num_args() == 0) return;
+
+        if (func_num_args() == 1 && is_array($args[0])) {
+            $this->_fieldlist = $args[0];
+        } else {
+            $this->_fieldlist = $args;
+        }
+
+        // We must include the id, otherwise we can't update the entry.
+        if (!in_array('id', $this->_fieldlist)) $this->_fieldlist[] = 'id';
+
+        return $this;
+    }
+
+    // Get the current fieldlist.
+    public function getFieldlist()
+    {
+        return $this->_fieldlist;
+    }
+
+    // Tells us whether this entry is dirty, i.e. needs to be saved
+    public function isDirty()
+    {
+        return $this->_dirty;
     }
 }

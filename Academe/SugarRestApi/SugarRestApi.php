@@ -244,7 +244,7 @@ class SugarRestApi
     {
         // TODO: check that there is valid data first.
         // States could be: network error, not authenticated, ...?
-        
+
         // The return data should be JSON encoded and in the body element.
         if (isset($returnData['body'])) {
             // TODO: if this is not decodable JSON?
@@ -254,8 +254,8 @@ class SugarRestApi
             $decodeBody = json_decode($returnData['body'], true);
 
             // Errors are returned as a triplet of properties: name, number and description.
-            // If we find these three, then assue an error has occurred and the method call was
-            // not successful.
+            // If we find these three, then an error has occurred and the method call was
+            // not successful. It's a bit of a fudge, but it's what we have to work with.
             if (
                 count($decodeBody) == 3 
                 && isset($decodeBody['name']) 
