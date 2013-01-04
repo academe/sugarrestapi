@@ -93,7 +93,7 @@ with big lumps of array data. This could lead on to persistent objects; fetch a 
 update it, ask it to save itself. A good start will be classes for generic entities (modules) 
 and relationships. These can then be extended with more specific classes if needed. A factory 
 method could handle that so you only need to know the module name and not the name of the 
-entity class you get back.
+entity class you get back. [The Entry and EntryList objects make a good start on that.]
 * Add PSR3 compatible logging.
 * Some cacheing would be good. Cacheing of the CRM version and capabilities, inluding the 
 fields and structure of the modules and relationships.
