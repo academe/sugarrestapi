@@ -97,5 +97,8 @@ entity class you get back.
 * Add PSR3 compatible logging.
 * Some cacheing would be good. Cacheing of the CRM version and capabilities, inluding the 
 fields and structure of the modules and relationships.
+* Take a better look at how the provider classes are injected into the Entry and EntryList 
+objects. There are some good examples here: 
+https://github.com/cartalyst/sentry/blob/master/src/Cartalyst/Sentry/Sentry.php
 
 
