@@ -1,5 +1,8 @@
 # SugarRestApi.php
 
+_**2013-04-25 Please note - these examples are out-of-date as I've restructured the classes somewhat. 
+I've tried to implement a factory to return entries and lists of entries, but it's all WIP at the moment.**_
+
 A simple library, using the resty/resty REST library (others can be used if desired) to
 handle the API for SugarCRM.
 
