@@ -165,6 +165,9 @@ class EntryList
         // Take each entry returned, and turn them into a separate entry class.
         if (!empty($EntryList['entry_list'])) {
             foreach ($EntryList['entry_list'] as $entry) {
+                // FIXME: this is baound a little tightly. What pattern would allow
+                // The EntryList to product a list of Entries, without needing to know
+                // what actual Entry class is? Got some homework to do :-)
                 $Entry = new \Academe\SugarRestApi\Entry($entry, $this->api);
                 $Entry->setModule($this->module);
 
