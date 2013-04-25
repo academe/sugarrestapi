@@ -11,6 +11,8 @@
 
 namespace Academe\SugarRestApi;
 
+use Academe\SugarRestApi\ApiInterface as ApiInterface;
+
 class Entry
 {
     // The name of the module, e.g. "Contacts", "Accounts"..
@@ -57,7 +59,7 @@ class Entry
     }
 
     // Set the object to an entry fetched from the CRM.
-    // This will overwrite the everything.
+    // This will overwrite everything, even an unsived dirty record.
     public function setEntry($entry)
     {
         if (empty($entry) || !is_array($entry)) return;
@@ -75,6 +77,8 @@ class Entry
         $this->_id = (isset($entry['id']) ? $entry['id'] : null);
 
         // Copy the data - either key/value array or array of name/value pair arrays.
+        // Some APIs return an entry in a name_value_list and other APIs in an entry_list
+        // element. We need to be able to handle these inconsistencies.
         if (isset($entry['key_value_list'])) {
             $this->_fields = $entry['key_value_list'];
         } elseif (isset($entry['name_value_list'])) {
@@ -87,22 +91,48 @@ class Entry
 
         // Set state of object. It was fetched from the API, so is not dirty yet.
         $this->_dirty = false;
+
+        return $this;
     }
 
     // Set the API reference.
     // CHECKME: is this reference pulled in correctly?
-    public function setApi($api)
+    public function setApi(\Academe\SugarRestApi\Api\ApiAbstract $api)
     {
         $this->_api =& $api;
+        return $this;
     }
 
     // If creating a record from scratch, then multiple fields can be set here.
-    // This is a record not yet saved to the CRM.
+    // This is a record not yet saved to the CRM. By default the complete set of
+    // fields will be overwritten, but can be merged instead by setting $overrite
+    // to false.
     // Data is a key/value array.
-    public function setFields($fields = array())
+    public function setFields($fields = array(), $overwrite = true)
     {
         $this->_dirty = true;
-        $this->_fields = $fields;
+
+        if ($overwrite) {
+            $this->_fields = $fields;
+        } else {
+            $this->_fields = array_merge($this->_fields, $fields);
+        }
+    }
+
+    // Set the value for a single field.
+    public function setField($name, $value)
+    {
+        $this->_dirty = true;
+        $this->_fields[$name] = $value;
+
+        // Add this field to the fieldlist, if not already set.
+        if (!in_array($name, $this->_fieldlist)) $this->_fieldlist[] = $name;
+    }
+
+    // Get the fields and values (an array).
+    public function getFields()
+    {
+        return $this->_fields;
     }
 
     // The constructor can be given data to initialise the entity.
@@ -112,10 +142,14 @@ class Entry
     // or a "key_value_list" single array. The former will be converted
     // to the latter automatically.
     // Now: pass in the "entry" array from the API.
-    public function __construct($entry = array())
+    public function __construct($entry = array(), $api = NULL)
     {
         if (!empty($entry) && is_array($entry)) {
             $this->setEntry($entry);
+        }
+
+        if (isset($api)) {
+            $this->setApi($api);
         }
     }
 
@@ -123,7 +157,7 @@ class Entry
     // TODO: record which fields have been updated.
     public function __set($name, $value)
     {
-        $this->_fields[$name] = $value;
+        $this->setField($name, $value);
 
         // Mark the record as dirty.
         $this->_dirty = true;
@@ -190,13 +224,15 @@ class Entry
     public function setModule($module)
     {
         if (!isset($this->_module)) $this->_module = $module;
+        return $this;
     }
 
     // Get an entry by ID.
     // The module will already have been set.
+    // TODO: also support ->setField('id', '{id}')->get()
     public function get($id)
     {
-        // TODO: Raise an error if we don't have a reference to the API object.
+        // TODO: Raise an exception if we don't have a reference to the API object.
         if (!is_object($this->_api)) return false;
 
         // TODO: find out what to do with this.
@@ -220,7 +256,7 @@ class Entry
     public function setFieldlist()
     {
         $args = func_get_args();
-        if (func_num_args() == 0) return;
+        if (func_num_args() == 0) return $this;
 
         if (func_num_args() == 1 && is_array($args[0])) {
             $this->_fieldlist = $args[0];

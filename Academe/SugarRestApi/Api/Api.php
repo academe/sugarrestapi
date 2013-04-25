@@ -4,26 +4,21 @@
  * @todo A general parameter validation framework to check data before it is passed on.
  * @todo Handle data as recources (e.g. User, Contact, Address, Note) rather than just 
  * as multidimensional arrays that need significant parsing.
+ * TODO: move the higher-level stuff out to a series of controllers.
  */
 
-namespace Academe\SugarRestApi;
+namespace Academe\SugarRestApi\Api;
 
-class SugarRestApi
+class Api extends ApiAbstract
 {
     // The rest controller.
     // We will be using resty/resty for now, but I have no idea how generic that is,
     // and so how easily it can be swapped out for something else.
     // TODO: see if https://github.com/mnapoli/PHP-DI is of any use here.
-    public $rest = NULL;
+    public $transport = NULL;
 
     // The URL of the REST entry point.
     public $entryPoint = '{protocol}://{domain}{path}/service/v{version}/rest.php';
-
-    // Placeholders for the URL parts.
-    public $protocol = 'http';
-    public $domain = '';
-    public $path = '';
-    public $version = '4';
 
     // The username and password used to log in.
     // To be persisted in the session.
@@ -31,7 +26,7 @@ class SugarRestApi
     public $authPassword = '';
     public $authVersion = '1';
 
-    // The current session ID and the user ID this corresponds to.
+    // The current Sugar session ID and the user ID this corresponds to.
     // To be persisted in the session.
     public $sessionId;
     public $userId;
@@ -46,12 +41,8 @@ class SugarRestApi
     public $apiInputType = 'JSON';
     public $apiResponseType = 'JSON';
 
-    // Default headers and options for the REST controller.
-    public $restHeaders = NULL;
-    public $restOptions = NULL;
-
     // Details of any error message.
-    public $error = array(
+    public $sugarError = array(
         'name' => '',
         'number' => '',
         'description' => '',
@@ -76,7 +67,7 @@ class SugarRestApi
             'sessionId' => $this->sessionId,
             'userId' => $this->userId,
             // Save the name of the REST class.
-            'restClass' => get_class($this->rest),
+            'restClass' => get_class($this->transport),
         ));
     }
 
@@ -87,6 +78,12 @@ class SugarRestApi
     }
 
     // Set the REST entry point URL
+    public function setEntryPoint($url = NULL)
+    {
+        $this->transport->buildEntryPoint();
+    }
+
+    /*
     public function setEntryPoint($url = NULL)
     {
         // If no URL is passed in then construct it from the parts we know about.
@@ -104,6 +101,7 @@ class SugarRestApi
             $this->entryPoint = $url;
         }
     }
+    */
 
     // Allow persistent data to be restored from the session.
     public function __construct($session = '')
@@ -115,7 +113,7 @@ class SugarRestApi
                 foreach($data as $name => $value) {
                     // Restore the REST class, if it can be instantiated.
                     if ($name == 'restClass' && class_exists($value)) {
-                        $this->rest = new $value();
+                        $this->transport = new $value();
                     } elseif (property_exists($this, $name)) {
                         $this->$name = $value;
                     }
@@ -125,6 +123,7 @@ class SugarRestApi
     }
 
     // Autologout, if required.
+
     public function __destruct()
     {
         if ($this->autologout) $this->logout;
@@ -133,9 +132,11 @@ class SugarRestApi
     // Setter/injecter for the rest controller.
     // Perhaps we need to be able to default to resty/resty here, assuming it is set as
     // a dependancy.
-    public function setRest($restController)
+    // The ultimate rest controller can be anything, so long as it has the interface we expect.
+
+    public function setTransport($restController /* TODO specify the interface */)
     {
-        $this->rest = $restController;
+        $this->transport = $restController;
     }
 
     // Set the username and password authentication credentials.
@@ -156,7 +157,7 @@ class SugarRestApi
         }
         if (isset($version)) $this->authVersion = $version;
 
-        // If the credentials hjave changed, then we need to log in as a different user,
+        // If the credentials have changed, then we need to log in as a different user,
         // and so the current session should be cleared.
         if ($detailsChanged) {
             $this->clearSession();
@@ -208,10 +209,11 @@ class SugarRestApi
             'rest_data' => json_encode($data),
         );
 
+        // Call the remote CRM.
         $payload = $this->callRest($postData, 'POST');
 
         // TODO: Here we check that the call succeeded, and raise exceptions as needed.
-        $result = $this->extractPayload($payload);
+        $result = $this->parsePayload($payload);
 
         // Find any name/value lists and transform the, into key/value lists for convenience.
         // Note: we will probably not do this here any more. The entry object can transform as required.
@@ -230,47 +232,43 @@ class SugarRestApi
 
         switch (strtoupper($method)) {
             case 'POST':
-                return $this->rest->post($this->entryPoint, $data, $this->restHeaders, $this->restOptions);
+                return $this->transport->post($data);
                 break;
         }
     }
 
-    // Extract the return data from an API call.
-    // This function is given whatever the result is of the REST call.
-    // Override this method if a different REST library is used and the payload
-    // is extracted in a different way.
-    // Also detect errors in the return value.
-    public function extractPayload($returnData)
+    // Parse the returned transport request data.
+    // If there are errors in itm, then mark that. Recognising errors is a bit strange
+    // with SugarCRM, and so may change with future API versions, so be aware of this.
+
+    public function parsePayload($returnData)
     {
-        // TODO: check that there is valid data first.
-        // States could be: network error, not authenticated, ...?
+        // Check first if the transport controller has raised an error.
+        if ($this->transport->getErrorMessage() <> '') {
+            $this->sugarError = array(
+                'name' => 'TransportError',
+                'number' => 999,
+                'description' => $this->transport->errorMessage,
+            );
+        }
 
-        // The return data should be JSON encoded and in the body element.
-        if (isset($returnData['body'])) {
-            // TODO: if this is not decodable JSON?
-            // CHECKME: do we want to decode to arraus or objects?
-            // CHECKME: why isn't this automatically decoded already by Resty? It should be.
-            // CHECKME: why does Resty always return "error"=>true? What does that mean?
-            $decodeBody = json_decode($returnData['body'], true);
-
+        // The return data should already be expanded into an array by the transport class.
+        if ($returnData && is_array($returnData)) {
             // Errors are returned as a triplet of properties: name, number and description.
             // If we find these three, then an error has occurred and the method call was
             // not successful. It's a bit of a fudge, but it's what we have to work with.
             if (
-                count($decodeBody) == 3 
-                && isset($decodeBody['name']) 
-                && isset($decodeBody['number']) 
-                && isset($decodeBody['description'])
+                count($returnData) == 3 
+                && isset($returnData['name']) 
+                && isset($returnData['number']) 
+                && isset($returnData['description'])
             ) {
-                $this->error = $decodeBody;
+                $this->sugarError = $returnData;
             } else {
-                $this->error['number'] = '';
+                $this->sugarError['number'] = '';
             }
 
-            return $decodeBody;
-        } else {
-            // No body set.
-            // TODO: what to do?
+            return $returnData;
         }
 
         return null;
@@ -278,9 +276,10 @@ class SugarRestApi
 
     // Indicate whether the last method call was successful or not.
     // Returns true if successful.
+
     public function isSuccess()
     {
-        return ($this->error['number'] == '');
+        return ($this->sugarError['number'] == '');
     }
 
     // Returns the error details, an array of name, number and description.
@@ -293,7 +292,7 @@ class SugarRestApi
                 'description' => '',
             );
         } else {
-            return $this->error;
+            return $this->sugarError;
         }
     }
 
@@ -324,22 +323,5 @@ class SugarRestApi
                 array_walk($value, array(&$this, 'transformNameValueListsCallback'));
             }
         }
-    }
-
-    // Return a new entity object.
-    // We need to expand this to more of a factory so that the returned
-    // class is relevant to the entity module and not simply generic.
-    // $entry is an entry already fetched from the CRM via the API.
-    public function newEntry($module)
-    {
-        $Entry = new Entry();
-
-        // Give it access to this API.
-        $Entry->setApi(&$this);
-
-        // Set the module if not already set.
-        $Entry->setModule($module);
-
-        return $Entry;
     }
 }

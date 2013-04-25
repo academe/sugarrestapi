@@ -6,14 +6,14 @@
  * if it is desired.
  */
 
-namespace Academe\SugarRestApi;
+namespace Academe\SugarRestApi\Api;
 
-class v4 extends SugarRestApi
+class v4 extends \Academe\SugarRestApi\Api\Api
 {
     public $version = '4';
 
     // Log into the CRM.
-    // TODO: if the sessionId is already set, then check we are logged in as the
+    // If the sessionId is already set, then check we are logged in as the
     // correct user, so we don't need to log in again.
     // Returns true if successful.
     public function login($username = NULL, $password = NULL)
@@ -86,7 +86,7 @@ class v4 extends SugarRestApi
     }
 
     // Retrieve a list of SugarBean based on provided IDs.
-    // This API will not wotk with report module.
+    // This API will not work with report module.
     // Each SugarBean will inckude an array of name/value pairs in the array 'name_value_list', but
     // not as an associative array. It may be helpful to convert this to an associative
     // array for each bean returned. The key/value pair structure is great for other languages that
@@ -274,7 +274,7 @@ class v4 extends SugarRestApi
 
     // Retrieve the list of available modules on the system available to the currently logged in user.
     // filter is all, default or mobile
-    public function getAvailableModules($failter = 'all', $moduleNames = array())
+    public function getAvailableModules($filter = 'all', $moduleNames = array())
     {
         $parameters = array(
             'session' => $this->sessionId,
@@ -400,7 +400,12 @@ class v4 extends SugarRestApi
     // Add or replace the attachment on a Note.
     // Optionally you can set the relationship of this note to Accounts/Contacts and so on by 
     // setting related_module_id, related_module_name.
-    public function setNoteAttachment($id_or_note, $filename = '', $fileContent = '', $moduleId = '', $moduleName = '')
+    // The binary file content is passed in.
+    // TODO: a variation on this where a local file URL or an open stream can be passed in,
+    // would cut down on the memory needed to encode the file. We are kind of stuck with this
+    // in-memory manipulation of the file content, because that is what the API transport
+    // requires (so far as I know).
+    public function setNoteAttachment($id_or_note, $filename = '', $file = '', $moduleId = '', $moduleName = '')
     {
         if (is_array($id_or_note)) {
             $note = $id_or_note;
@@ -408,7 +413,7 @@ class v4 extends SugarRestApi
             $note = array(
                 'id' => $id,
                 'filename' => $filename,
-                'file' => $fileContent,
+                'file' => base64_encode($file),
                 'related_module_id' => $moduleId,
                 'related_module_name' => $moduleName,
             );
@@ -430,10 +435,19 @@ class v4 extends SugarRestApi
             'id' => $id,
         );
 
-        return $this->apiPost('get_note_attachment', $parameters);
+        $result = $this->apiPost('get_note_attachment', $parameters);
+
+        // Decode the file to its binary format.
+        // This is all in-memoery stuff, so fingers crossed that it is going to work.
+        if (isset($result['note_attachment']['file'])) {
+            $result['note_attachment']['file'] = base64_decode($result['note_attachment']['file']);
+        }
+
+        return $result;
     }
 
     // Sets a new revision for this document.
+    // The file content needs to be base64_encoded
     public function setDocumentRevision($id_or_revision, $documentName = '', $revision = '', $filename = '', $fileContent = '')
     {
         if (is_array($id_or_revision)) {
@@ -459,6 +473,10 @@ class v4 extends SugarRestApi
     // This method is used as a result of the .htaccess lock down on the cache directory.
     // It will allow a properly authenticated user to download a document that they have
     // proper rights to download.
+    // The document must be base64_decoded once it is retreived.
+    // It is not clear where we get the document revision ID from, or whether this just
+    // applies to the Documents module, or extended to any module that supports the
+    // uploaded of documents.
     public function getDocumentRevision($id)
     {
         $parameters = array(
