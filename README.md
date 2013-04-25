@@ -1,7 +1,9 @@
 # SugarRestApi.php
 
 _**2013-04-25 Please note - these examples are out-of-date as I've restructured the classes somewhat. 
-I've tried to implement a factory to return entries and lists of entries, but it's all WIP at the moment.**_
+I've tried to implement a factory to return entries and lists of entries, but it's all WIP at the moment. 
+For example, I've moved from Resty to Guzzle, but we have a middle transport abstract to standardise 
+the transport layer, so other HTTP libraries could be used if required.**_
 
 A simple library, using the resty/resty REST library (others can be used if desired) to
 handle the API for SugarCRM.
