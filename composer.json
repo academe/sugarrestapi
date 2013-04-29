@@ -16,5 +16,10 @@
     "require": {
         "php": ">=5.3.0",
         "guzzle/guzzle": "v3.1.2"
+    },
+    "autoload": {
+        "psr-0": {
+            "Academe": "/"
+        }
     }
 }
