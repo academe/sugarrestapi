@@ -15,6 +15,25 @@ version is in the URL rather than in the HTTP header.
 
 This is work-in-progress, with a long list of TODOs.
 
+## Loading with composer
+
+This, in your main composer.json will load the package into your project via composer:
+
+    {
+        "repositories": [
+            {
+                "type": "vcs",
+                "url": "https://github.com/academe/sugarrestapi"
+            }
+        ],
+        "require": {
+            "php": ">=5.3.0",
+            "academe/sugarrestapi": "dev-master"
+        }
+    }
+
+Merge those sections into your existing composer.json then issue `php composer.phar update`
+
 ## Example Use
 
     require 'vendor/autoload.php';
