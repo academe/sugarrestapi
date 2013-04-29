@@ -31,10 +31,13 @@ class EntryList
     public $api;
 
     // The current list of entries.
-    public $entryList = array();
+    public $entry_list = array();
 
     // List of fields we are interested in.
     public $fieldlist = array();
+
+    //
+    public $entry_classname = '\\Academe\\SugarRestApi\\Entry';
 
     // Keeping track of a resultset.
     public $result_count = 0;
@@ -119,7 +122,7 @@ class EntryList
     {
         $result = array();
 
-        foreach($this->entryList as $entry) {
+        foreach($this->entry_list as $entry) {
             $result[$entry->id] = $entry->getFields();
         }
 
@@ -142,7 +145,7 @@ class EntryList
         // TODO: when we start a new resultset, i.e. when the query parameters are changed
         // and the current results discarded, we need to reset the counters.
 
-        $EntryList = $this->api->getEntryList(
+        $entry_list = $this->api->getEntryList(
             $this->module,
             $this->query, //$query = NULL, 
             null, //$order = NULL, 
@@ -156,25 +159,36 @@ class EntryList
 
         // Useful elements: result_count, total_count, offset, [entry_list]
         // TODO: check not an error in the API.
-        if (is_array($EntryList)) {
-            $this->result_count = $EntryList['result_count'];
-            $this->total_count = $EntryList['total_count'];
-            $this->offset = $EntryList['next_offset'];
+        if (is_array($entry_list)) {
+            $this->result_count = $entry_list['result_count'];
+            $this->total_count = $entry_list['total_count'];
+            $this->offset = $entry_list['next_offset'];
         }
 
         // Take each entry returned, and turn them into a separate entry class.
-        if (!empty($EntryList['entry_list'])) {
-            foreach ($EntryList['entry_list'] as $entry) {
+        if (!empty($entry_list['entry_list'])) {
+            foreach ($entry_list['entry_list'] as $entry) {
                 // FIXME: this is baound a little tightly. What pattern would allow
                 // The EntryList to product a list of Entries, without needing to know
                 // what actual Entry class is? Got some homework to do :-)
-                $Entry = new \Academe\SugarRestApi\Entry($entry, $this->api);
+                $Entry = new $this->entry_classname($entry, $this->api);
                 $Entry->setModule($this->module);
 
-                $this->entryList[$Entry->id] = $Entry;
+                $this->entry_list[$Entry->id] = $Entry;
             }
         }
 
         return $this;
+    }
+
+    // Save any records that have been changed.
+    public function save()
+    {
+        if (!empty($this->entry_list)) {
+            // CHECKME: saving an entry must not create a copy of the object to do so, as it is mutating.
+            foreach($this->entry_list as $entry) {
+                if ($entry->isDirty()) $entry->save();
+            }
+        }
     }
 }

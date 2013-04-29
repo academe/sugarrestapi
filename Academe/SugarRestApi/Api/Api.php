@@ -137,6 +137,8 @@ class Api extends ApiAbstract
     public function setTransport($restController /* TODO specify the interface */)
     {
         $this->transport = $restController;
+
+        return $this;
     }
 
     // Set the username and password authentication credentials.

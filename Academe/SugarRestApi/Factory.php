@@ -11,6 +11,12 @@ class Factory
     // The CRM API object (injected).
     public $api = NULL;
 
+    // Template for the API class of a given version.
+    public $api_class_template = 'Academe\\SugarRestApi\\Api\\v{version}';
+
+    public $entrylist_classname = '\\Academe\\SugarRestApi\\EntryList';
+    public $entry_classname = '\\Academe\\SugarRestApi\\Entry';
+
     // Inject the API if we have one already.
     public function __construct(\Academe\SugarRestApi\Api\ApiAbstract $api = NULL)
     {
@@ -20,13 +26,13 @@ class Factory
     // Set the API reference.
     public function setApi(\Academe\SugarRestApi\Api\ApiAbstract $api)
     {
-        $this->api =& $api;
+        $this->api = $api;
     }
 
     // Return a new entry object.
     public function newEntry($module)
     {
-        $Entry = $this->buildEntry();
+        $Entry = new $this->entry_classname();
 
         // Give it access to this API.
         $Entry->setApi($this->api);
@@ -37,15 +43,14 @@ class Factory
         return $Entry;
     }
 
-    public function buildEntry()
-    {
-        return new \Academe\SugarRestApi\Entry();
-    }
-
     // Return a new entry list object.
     public function newEntryList($module_name)
     {
-        $EntryList = $this->buildEntryList();
+        // Create the new EntryList object.
+        $EntryList = new $this->entrylist_classname();
+
+        // Tell the object the name of the Entry class to use.
+        $EntryList->entry_classname = $this->entry_classname;
 
         // Give it access to this API.
         $EntryList->setApi($this->api);
@@ -56,8 +61,16 @@ class Factory
         return $EntryList;
     }
 
-    public function buildEntryList()
+    // Set and return a new API object.
+    public function newApi($version = 4, $transport = NULL)
     {
-        return new \Academe\SugarRestApi\EntryList();
+        $api_name = str_replace('{version}', $version, $this->api_class_template);
+        $this->api = new $api_name();
+
+        if (isset($transport)) {
+            $this->api->setTransport($transport);
+        }
+
+        return $this->api;
     }
 }

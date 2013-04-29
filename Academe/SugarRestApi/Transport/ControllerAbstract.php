@@ -17,6 +17,8 @@ abstract class ControllerAbstract
     public $entryPointUrl = '';
 
     // Placeholders for the REST entry point URL parts.
+    // Use setTemplatePlaceholder() or the more specific methods
+    // to set these, or created more template placeholders.
     public $entryPointPlaceholders = array(
         'protocol' => 'http',
         'domain' => '',
@@ -24,12 +26,20 @@ abstract class ControllerAbstract
         'version' => '4',
     );
 
-    // The text of any error messages from calling a rest resource.
+    // The text of any error messages after calling a rest resource.
     public $errorMessage = '';
 
     /**
     * Set a placeholder value for the entry point URL template.
     */
+
+    // Set the domain in the constructor, as that will be the most common thing to change.
+    public function __construct($domain = null)
+    {
+        if (isset($domain)) {
+            $this->setDomain($domain);
+        }
+    }
 
     public function setTemplatePlaceholder($name, $value)
     {
