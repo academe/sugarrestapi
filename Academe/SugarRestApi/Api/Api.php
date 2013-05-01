@@ -5,6 +5,9 @@
  * @todo Handle data as recources (e.g. User, Contact, Address, Note) rather than just 
  * as multidimensional arrays that need significant parsing.
  * TODO: move the higher-level stuff out to a series of controllers.
+ * TODO: auto re-login if the session on the CRM end gets dropped or times out. We may need
+ *      to implement some kind of watcher pattern so that the new connection can be cached
+ *      as needed by the framework.
  */
 
 namespace Academe\SugarRestApi\Api;
@@ -56,6 +59,8 @@ class Api extends ApiAbstract
 
     // Get data that should be persisted to
     // avoid having to log in afresh on each page request.
+    // TODO: include a hash of the session, so it can be cached between pages
+    // in an application, allowing each unique conection to be cached separately.
     public function getSession()
     {
         return json_encode(array(
@@ -217,8 +222,8 @@ class Api extends ApiAbstract
         // TODO: Here we check that the call succeeded, and raise exceptions as needed.
         $result = $this->parsePayload($payload);
 
-        // Find any name/value lists and transform the, into key/value lists for convenience.
-        // Note: we will probably not do this here any more. The entry object can transform as required.
+        // Find any name/value lists and transform them into key/value lists for convenience.
+        // Note: we will not do this here any more. The entry object can transform as required.
         //$this->transformNameValueLists($result);
 
         return $result;
@@ -254,7 +259,7 @@ class Api extends ApiAbstract
             );
         }
 
-        // The return data should already be expanded into an array by the transport class.
+        // The return data should already be expanded into a nested array by the transport class.
         if ($returnData && is_array($returnData)) {
             // Errors are returned as a triplet of properties: name, number and description.
             // If we find these three, then an error has occurred and the method call was
@@ -285,6 +290,7 @@ class Api extends ApiAbstract
     }
 
     // Returns the error details, an array of name, number and description.
+
     public function error()
     {
         if ($this->isSuccess) {
@@ -300,6 +306,7 @@ class Api extends ApiAbstract
 
     // Search the result for name_value_list elements and expand it into
     // key/value pairs in the element key_value_list.
+
     public function transformNameValueLists(&$data)
     {
         if (!is_array($data)) return;
@@ -326,4 +333,59 @@ class Api extends ApiAbstract
             }
         }
     }
+
+    // Parse a relationship list returned from the API in an entry list to something 
+    // more sensible.
+    // TOOD: move this to the API.
+
+    public function parseRelationshipList($entry_list)
+    {
+        $linked_data = array();
+
+        if (!empty($entry_list['relationship_list'])) {
+            foreach($entry_list['relationship_list'] as $master_sequence => $link_list_wrapper) {
+                if (!empty($link_list_wrapper['link_list']) && is_array($link_list_wrapper['link_list'])) {
+                    foreach($link_list_wrapper['link_list'] as $list_sequence => $list) {
+                        if (!empty($list['records']) && is_array($list['records'])) {
+                            $relationship_name = $list['name'];
+
+                            foreach($list['records'] as $record) {
+                                if (!empty($record['link_value']) && is_array($record['link_value'])) {
+                                    // Now we have one single record from a related entity in name/value
+                                    // pair format. We know which source entity it belongs to, we have
+                                    // the relationship name, and we have field values at the end of that
+                                    // relationship.
+                                    // Convert it to a key=>value array.
+                                    $record_data = $this->nameValueListToArray($record['link_value']);
+
+                                    // Now put the record into the relationship structure, without all
+                                    // the wrapper cruft of the source structure..
+                                    $linked_data[$master_sequence][$relationship_name][] = $record_data;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return $linked_data;
+    }
+
+    // Convert a name_value_list to a key/value array.
+    // At may be worth moving this to the SugarRestApi API class.
+
+    public function nameValueListToArray($nameValueList)
+    {
+        $array = array();
+
+        foreach($nameValueList as $field) {
+            if (isset($field['name']) && isset($field['value'])) {
+                $array[$field['name']] = $field['value'];
+            }
+        }
+
+        return $array;
+    }
+
 }

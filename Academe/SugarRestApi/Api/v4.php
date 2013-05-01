@@ -4,6 +4,7 @@
  * v4 of the SugarCRM API
  * This would extend v3, if a v3 existed. I'll leave that for others to implement
  * if it is desired.
+ * FIXME: this should be V4, not v4.
  */
 
 namespace Academe\SugarRestApi\Api;
@@ -109,8 +110,37 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         return $this->apiPost('get_entries', $parameters);
     }
 
+    // Convert a simple array of relationships and fieldsw into a name/value array
+    // required by the SugarCRM API.
+    public function arrayToNameValues($array)
+    {
+        // The link name fields is a nasty structure, so we will accept something simpler
+        // here.
+        // The link list we accept is a an array of arrays:
+        //  array('link-name' => array('field1', 'field2', ...), ...)
+        // The link-name is the name of the relationship, as seen in Studio. The fields
+        // are the list of fields in the linked table that you want to retrieve.
+        // As far as I know, there is no way to return all the fields - they have to be named.
+
+        $nameValues = array();
+
+        if (!empty($array) && is_array($array)) {
+            foreach($array as $linkName => $linkFields) {
+                if (is_array($linkFields)) {
+                    if (empty($linkFields)) $linkFields = array('id');
+
+                    // This is the format SugarCRM expects it, as 'name/value' pairs.
+                    $nameValues[] = array('name' => $linkName, 'value' => $linkFields);
+                }
+            }
+        }
+
+        return $nameValues;
+    }
+
     // Retrieve a list of beans.
     // This is the primary method for getting list of SugarBeans from Sugar.
+
     public function getEntryList($moduleName, $query = NULL, $order = NULL, $offset = 0, $fields = array(), $linkNameFields = array(), $limit = NULL, $deleted = false, $favourites = false)
     {
         $parameters = array(
@@ -120,7 +150,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
             'order_by' => $order,
             'offset' => $offset,
             'select_fields' => $fields,
-            'link_name_to_fields_array' => $linkNameFields,
+            'link_name_to_fields_array' => $this->arrayToNameValues($linkNameFields),
             'max_results' => $limit,
             'deleted' => $deleted,
             'favorites' => $favourites,
@@ -225,7 +255,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
             'module_name' => $moduleName,
             'id' => $id,
             'select_fields' => $fields,
-            'link_name_to_fields_array' => $linkNameFields,
+            'link_name_to_fields_array' =>  $this->arrayToNameValues($linkNameFields),
             'track_view' => $trackView,
         );
 

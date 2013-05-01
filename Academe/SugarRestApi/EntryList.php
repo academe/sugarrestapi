@@ -16,6 +16,8 @@ class EntryList
     // The query we are running.
     public $query = null;
 
+    public $order_by = null;
+
     // The module name
     public $module = null;
 
@@ -35,6 +37,9 @@ class EntryList
 
     // List of fields we are interested in.
     public $fieldlist = array();
+
+    // The 'link name fields' - an array of arrays of field names.
+    public $link_name_fields = array();
 
     //
     public $entry_classname = '\\Academe\\SugarRestApi\\Entry';
@@ -104,6 +109,23 @@ class EntryList
         return $this;
     }
 
+    public function setOrderBy($order_by)
+    {
+        $this->order_by = $order_by;
+        $this->clearResults();
+        return $this;
+    }
+
+    // Set the list of relationships and the fields we want to get from the entry
+    // at the end of each relationship.
+
+    public function setLinkFields($link_name_fields)
+    {
+        $this->link_name_fields = $link_name_fields;
+        $this->clearResults();
+        return $this;
+    }
+
     // Clear the results we may have already selected.
     // This is required if the query is changed, so we can start again from the
     // first page.
@@ -124,11 +146,13 @@ class EntryList
 
         foreach($this->entry_list as $entry) {
             $result[$entry->id] = $entry->getFields();
+
+            // Throw in the relationships too.
+            $result[$entry->id]['_relationships'] = $entry->getRelationshipFields();
         }
 
         return $result;
     }
-
 
     // Run the query and fetch records.
     // We will fetch up to a page of entries (records) into $entryList.
@@ -136,22 +160,20 @@ class EntryList
     // fetchPage() will fetch the next page.
     // Changing any parameters of the query should reset the fetched record list,
     // so we start fetching from the first page again.
+
     public function fetchPage($count = 0)
     {
         // TODO: we need to check if we have already exhausted the current resultset, and
         // not attempt to fetch another page if we have.
-
         // TODO: check the query details are sufficient and the API and session is set up.
-        // TODO: when we start a new resultset, i.e. when the query parameters are changed
-        // and the current results discarded, we need to reset the counters.
 
         $entry_list = $this->api->getEntryList(
             $this->module,
-            $this->query, //$query = NULL, 
-            null, //$order = NULL, 
+            $this->query,
+            $this->order_by,
             $this->offset,
             $this->fieldlist,
-            array(), //$linkNameFields
+            $this->link_name_fields,
             (!empty($count) ? $count : $this->pageSize), // limit
             false, // deleted
             false // favourites
@@ -165,16 +187,32 @@ class EntryList
             $this->offset = $entry_list['next_offset'];
         }
 
+        // If there are relationship fields retrieved, then parse those first, as we
+        // will be moving them to the individual entries as they are processed.
+        // The structure of this goes pretty deep. For each entry retrieved there will
+        // be an element in the relationship_list:
+        //  []['link_list'][]['name'=>'relationship_name','records'=>['link_value'=>name/value-list-of-fields] ]
+
+        $linked_data = $this->api->parseRelationshipList($entry_list);
+
         // Take each entry returned, and turn them into a separate entry class.
         if (!empty($entry_list['entry_list'])) {
+            // Keep a count of the entries, as it is the only way to match them up to 
+            // the relationship records.
+            $entry_count = 0;
+
             foreach ($entry_list['entry_list'] as $entry) {
-                // FIXME: this is baound a little tightly. What pattern would allow
-                // The EntryList to product a list of Entries, without needing to know
-                // what actual Entry class is? Got some homework to do :-)
                 $Entry = new $this->entry_classname($entry, $this->api);
                 $Entry->setModule($this->module);
 
+                // If there is relationshnip data for this entry, then add it to the object.
+                if (!empty($linked_data[$entry_count])) {
+                    $Entry->setRelationshipFields($linked_data[$entry_count]);
+                }
+
                 $this->entry_list[$Entry->id] = $Entry;
+
+                $entry_count++;
             }
         }
 

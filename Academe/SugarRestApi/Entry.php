@@ -43,7 +43,47 @@ class Entry
     // If dirty, then data needs to be written to the database.
     public $_dirty = false;
 
-    // Convert a name_value_list to a a key/value array.
+    // The 'link name fields' - an array of arrays of field names.
+    public $link_name_fields = array();
+
+    // Relationship data retrieved from the CRM.
+    public $_relationships = array();
+
+    // Set the list of relationships and the fields we want to get from the entry
+    // at the end of each relationship.
+
+    public function setLinkFields($link_name_fields)
+    {
+        $this->link_name_fields = $link_name_fields;
+        return $this;
+    }
+
+    // Set the relationship data for the entry.
+    // This is a read-only set of data, and is not used to update the entry when it is saved.
+
+    public function setRelationshipFields($relationships)
+    {
+        $this->_relationships = $relationships;
+    }
+
+    // Return the records for a single relationship, or for all relationships.
+    // The relationship name is the name as seen in SugarCRM Studio.
+
+    public function getRelationshipFields($relationship_name = null)
+    {
+        if (!isset($relationship_name)) {
+            return $this->_relationships;
+        } else {
+            if (isset($this->_relationships[$relationship_name])) {
+                return $this->_relationships[$relationship_name];
+            } else {
+                return array();
+            }
+        }
+    }
+
+
+    // Convert a name_value_list to a key/value array.
     // At may be worth moving this to the SugarRestApi API class.
     public function nameValueListToArray($nameValueList)
     {
@@ -132,7 +172,15 @@ class Entry
     // Get the fields and values (an array).
     public function getFields()
     {
-        return $this->_fields;
+        // Add in any relationship data if there is any.
+        if (!empty($this->_relationships)) {
+            return array_merge(
+                $this->_fields,
+                array('_relationships' => $this->getRelationshipFields())
+            );
+        } else {
+            return $this->_fields;
+        }
     }
 
     // The constructor can be given data to initialise the entity.
@@ -237,12 +285,27 @@ class Entry
 
         // TODO: find out what to do with this.
         $trackView = false;
-        $linkNameFields = array();
 
         // Fetch the entry.
-        $entry = $this->_api->getEntry($this->_module, $id, $this->_fieldlist, $linkNameFields, $trackView);
+        $entry = $this->_api->getEntry(
+            $this->_module,
+            $id,
+            $this->_fieldlist,
+            $this->link_name_fields,
+            $trackView
+        );
+
+        // TODO: also get the relationships at this point, pasre
+        // them to a nicer structure, then add them using setRelationshipData()
 
         if ($this->_api->isSuccess() && !empty($entry['entry_list'])) {
+            // Parse any relationship data that has been returned.
+            $linked_data = $this->api->parseRelationshipList($entry['entry_list']);
+
+            if (!empty($linked_data[0])) {
+                $this->setRelationshipFields($linked_data[0]);
+            }
+
             $this->setEntry(reset($entry['entry_list']));
         }
 

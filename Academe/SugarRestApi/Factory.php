@@ -2,6 +2,7 @@
 
 /**
  * Factory for the high-level classes of the API.
+ * CHECKME: is this a "provider"? Need to do some reading up.
  */
 
 namespace Academe\SugarRestApi;
