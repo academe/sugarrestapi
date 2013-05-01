@@ -5,15 +5,17 @@ I've tried to implement a factory to return entries and lists of entries, but it
 For example, I've moved from Resty to Guzzle, but we have a middle transport abstract to standardise 
 the transport layer, so other HTTP libraries could be used if required.**_
 
-A simple library, using the resty/resty REST library (others can be used if desired) to
+A simple library, using the Guzzle REST library (others can be used if desired) to
 handle the API for SugarCRM.
 
-The SugarCRM is called a "rest" API, although it hardly counts as one. Nearly all requests
+The SugarCRM API is described as a "rest" API, but leaves a lot to be desired. Nearly all requests
 use POST, regardless of what they do, and there is just one entry point for everything, so
-the request type (PUT, POST, GET etc) does not declare the action that is required. The API
-version is in the URL rather than in the HTTP header.
+the request type - the verb - (PUT, POST, GET etc) does not have any meaning. The API
+version is also in the URL rather than in the HTTP header.
 
-This is work-in-progress, with a long list of TODOs.
+This is work-in-progress, with a long list of TODOs. I've developing it in conjunction with some 
+new projects, but also trying to learn new design patterns that are frequently used but new to me. 
+If you spot a better way to do something here, just shout - feedback much appreciated.
 
 ## Loading with composer
 
@@ -36,51 +38,65 @@ Merge those sections into your existing composer.json then issue `php composer.p
 
 ## Example Use
 
-    require 'vendor/autoload.php';
-    $sessionData = ... // persistence data retrieved from the session
-    $sugarApi = new Academe\SugarRestApi\v4($sessionData);
+This example ignores caching of the SugarCRM session, which can be shared between any number 
+of pages and requests once a connection (a login) is done. It also assumes a PSR-0 autoloader 
+is installed and set up. Installing this library through composer will do that, or just load 
+one of your own.
+
+    // Get accounts whose names start with "Acad". Include the names and IDs of all their contacts.
     
-    // The REST class may have been restored with the persistence sessionData.
-    if (!isset($sugarApi->rest)) {
-        $rest = new Resty();
-        $sugarApi->setRest($rest);
-    }
+    // Create a factory.
+    $version = 4;
+    $factory = new \Academe\SugarRestApi\Factory();
     
-    // In most cases only the domain is needed for the entry point to be constructed.
-    $sugarApi->domain = 'example.com';
+    // Create a transport connection object and use that to create an API object.
+    $transport = new \Academe\SugarRestApi\Transport\ControllerGuzzle('my.sugarcrm.site.domain');
     
-    // The path and protocol can normally be left as default.
-    //$sugarApi->path = 'path-to-my-crm';
-    //$sugarApi->protocol = 'https';
+    // We can use the many low-level API methods in the API object, but we will not in this example.
+    $sugar_api = $Factory->newApi($version)->setTransport($transport);
     
-    // A login will only be done if the persisted session is no longer
-    // valid for any reason, or we are logging in as a different user.
-    // The result will be true or false, indicating you are now, or were
-    // already, logged in.
-    // or not.
-    $loginSuccess = $sugarApi->login('User Name', 'password');
+    // Now log in to the CRM. Check the result is true.
+    $login_status = $sugar_api->login('username', 'password');
     
-    $ContactsModuleFields = $sugarApi->getModuleFields('Contacts');
+    // Get the data from SugarCRM.
+    $accounts = $factory
+        // Return a list of accounts.
+        ->newEntryList('Accounts')
+        
+        // Names must start with "Acad"
+        ->setQuery('name LIKE \'Acad%\'')
+        
+        // Set some fields we want to get back.
+        ->setFieldList('id', 'name', 'description')
+        
+        // We also want contacts for these accounts - name and ID will do.
+        ->setLinkFields('accounts_contacts' => array('id', 'first_name', 'last_name'))
+        
+        // Fetch teh first page of results (up to 20 records)
+        ->fetchPage();
+
+    // The $accounts will contain matching records, as an EntryList object containing an array of
+    // Entry objects.
     
-    if (!$sugarApi->isSuccess()) {
-        $errorDetails = $sugarApi->error();
-    }
+    // Subsequent calls to $accounts->fetchPage() will return subsequent pages of records.
     
-    $sessionData = $sugarApi->getSession();
-    // or
-    $sessionData = (string)$sugarApi;
-    // Now store $sessionData in the session so we can pull it in on the next page.
+    // This will return ALL records fetched so far, as an array of arrays.
+    // Any linked linked contacts will be listed in the "_relationships" element.
+    $entry_data = $accounts->getFields();
+
 
 There is now an Entry class used for a SugarCRM entry - a single record from a module. It can be
 used like this:
 
     ...
     // If we know the ID, this will fetch the entry and return it as an object:
-    $Contact = $sugarApi->newEntry('Contacts')
+    $contact = $factory->newEntry('Contacts')
         ->setFieldlist('first_name', 'last_name', 'title')
         ->get('11420eb6-ce89-e467-596a-50b7892b8b10');
+
     // Add a suffix to the title of the contact.
     $Contact->title .= ' [MARKED]';
+    
     // Save it back to the CRM.
     $Contact->save();
     
@@ -124,5 +140,7 @@ fields and structure of the modules and relationships.
 * Take a better look at how the provider classes are injected into the Entry and EntryList 
 objects. There are some good examples here: 
 https://github.com/cartalyst/sentry/blob/master/src/Cartalyst/Sentry/Sentry.php
+* Allow EntryList to operate as an iterator, so you can loop over Entries that is has 
+downloaded, but ALSO have it auto-fetch pages of new Entries as necessary.
 
 
