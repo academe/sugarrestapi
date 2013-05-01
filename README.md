@@ -52,7 +52,7 @@ one of your own.
     // Create a transport connection object and use that to create an API object.
     $transport = new \Academe\SugarRestApi\Transport\ControllerGuzzle('my.sugarcrm.site.domain');
     
-    // We can use the many low-level API methods in the API object, but we will not in this example.
+    // We can use the many low-level API methods in the API object, but we will only use login in this example.
     $sugar_api = $Factory->newApi($version)->setTransport($transport);
     
     // Now log in to the CRM. Check the result is true.
