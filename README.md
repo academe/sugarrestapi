@@ -72,7 +72,8 @@ one of your own.
         // We also want contacts for these accounts - name and ID will do.
         ->setLinkFields('accounts_contacts' => array('id', 'first_name', 'last_name'))
         
-        // Fetch teh first page of results (up to 20 records)
+        // Fetch teh first page of results (up to 20 records).
+        // This method populates the EntryList with Entries, one page at a time.
         ->fetchPage();
 
     // The $accounts will contain matching records, as an EntryList object containing an array of
