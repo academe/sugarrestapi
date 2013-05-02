@@ -41,12 +41,29 @@ class EntryList
     // The 'link name fields' - an array of arrays of field names.
     public $link_name_fields = array();
 
-    //
+    // The class for a single Entry.
     public $entry_classname = '\\Academe\\SugarRestApi\\Entry';
 
     // Keeping track of a resultset.
+    // The number of Entries in the last fetch.
     public $result_count = 0;
+
+    // The total number of entries that match the query.
     public $total_count = 0;
+
+    // Set to true if the current list of entries is completely fetched.
+    public $list_complete = false;
+
+    // Set the number of entries that a page consists of.
+
+    public function setPageSize($page_size)
+    {
+        if (is_numeric($page_size) && $page_size >= 1) {
+            $this->pageSize = $page_size;
+        }
+
+        return $this;
+    }
 
     // Set the module for this generic entry object.
     // The module can only be set once and not changed.
@@ -54,13 +71,48 @@ class EntryList
     {
         // You cannot change the module once it has been set.
         if (!isset($this->module)) $this->module = $module;
+
+        return $this;
+    }
+
+    // Return the cound of Entries that match the current query.
+    // Will only be populated after the first fetchPage()
+
+    public function getTotalCount()
+    {
+        return $this->total_count;
+    }
+
+    // Return the number of Entries fetched in the last fetchPage().
+    // It will either be $this->pageSize, or a lower figure.
+
+    public function getResultCount()
+    {
+        return $this->result_count;
+    }
+
+    // Return the number of records that have been fetched from the CRM so far.
+    // By continual fetching, this should max out at the getTotalCount() figure, but
+    // that does not account for records that are continually being edited in the CRM;
+    // while fetching pages, matching entries may have been added or removed, or updated
+    // so they no longer match.
+
+    public function getFetchCount()
+    {
+        return count($this->entry_list);
+    }
+
+    // Returns true if the current list is complete.
+    public function fetchIsComplete()
+    {
+        return $this->list_complete;
     }
 
     // Set the API reference.
     // CHECKME: is this reference pulled in correctly?
     public function setApi(\Academe\SugarRestApi\Api\ApiAbstract $api)
     {
-        $this->api =& $api;
+        $this->api = $api;
     }
 
     // Set the fields we will be dealing with.
@@ -137,6 +189,7 @@ class EntryList
         $this->fieldlist = array();
         $this->result_count = 0;
         $this->total_count = 0;
+        $this->list_complete = false;
     }
 
     // Get the fields and values (an array of entries with an array of fields for each).
@@ -163,9 +216,10 @@ class EntryList
 
     public function fetchPage($count = 0)
     {
-        // TODO: we need to check if we have already exhausted the current resultset, and
-        // not attempt to fetch another page if we have.
         // TODO: check the query details are sufficient and the API and session is set up.
+
+        // The limit to the number of entries we are asking for.
+        $limit = (!empty($count) ? $count : $this->pageSize);
 
         $entry_list = $this->api->getEntryList(
             $this->module,
@@ -174,7 +228,7 @@ class EntryList
             $this->offset,
             $this->fieldlist,
             $this->link_name_fields,
-            (!empty($count) ? $count : $this->pageSize), // limit
+            $limit,
             false, // deleted
             false // favourites
         );
@@ -186,6 +240,10 @@ class EntryList
             $this->total_count = $entry_list['total_count'];
             $this->offset = $entry_list['next_offset'];
         }
+
+        // The set is complete if we have been returned fewer than the number of entries
+        // that fit in a page.
+        if ($this->result_count < $limit) $this->list_complete = true;
 
         // If there are relationship fields retrieved, then parse those first, as we
         // will be moving them to the individual entries as they are processed.
@@ -214,6 +272,31 @@ class EntryList
 
                 $entry_count++;
             }
+        }
+
+        return $this;
+    }
+
+    // Fetch all rows that match the query.
+    // We will do it a page at a time, so set the page size higher if you want to do
+    // it in fewer API calls.
+    // The limit is a safety-net and is the maximum number of entries to fetch.
+
+    public function fetchAll($limit = null)
+    {
+        $count = null;
+
+        while (!$this->fetchIsComplete()) {
+            if ($limit > 0) {
+                if ($this->getFetchCount() >= $limit) return $this;
+                if (($limit - $this->getFetchCount()) < $this->pageSize) {
+                    // We have less than a page to go before we reach the limit, so 
+                    // set the next fetch count a little smaller.
+                    $count = $limit - $this->getFetchCount();
+                }
+            }
+
+            $this->fetchPage($count);
         }
 
         return $this;
