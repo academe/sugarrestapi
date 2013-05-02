@@ -246,8 +246,23 @@ class EntryList implements \Countable, \Iterator
 
     public function setLinkFields($link_name_fields)
     {
+        // Extract any aliases for the relationship names.
+        // This are expressed as "relationship-name:alias" pairs.
+        foreach($link_name_fields as $key => $value) {
+            if (strpos($key, ':') !== false) {
+                list($name, $alias) = explode(':', $key, 2);
+                $link_name_fields[$name] = $value;
+                unset($link_name_fields[$key]);
+                $this->api->relationship_aliases[$name] = $alias;
+            }
+        }
+
         $this->link_name_fields = $link_name_fields;
-        $this->clearResults();
+
+        // We probably don't need to clear the results, because we are not
+        // changing the query parameters.
+        //$this->clearResults();
+
         return $this;
     }
 
@@ -330,7 +345,7 @@ class EntryList implements \Countable, \Iterator
         }
 
         // The set is complete if we have been returned fewer than the number of entries
-        // that fit in a page.
+        // that fit in page quantity that was requested.
         if ($this->result_count < $limit) $this->list_complete = true;
 
         // If there are relationship fields retrieved, then parse those first, as we

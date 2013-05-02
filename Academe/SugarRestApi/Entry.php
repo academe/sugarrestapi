@@ -51,6 +51,7 @@ class Entry
 
     // Set the list of relationships and the fields we want to get from the entry
     // at the end of each relationship.
+    // TODO: support aliases.
 
     public function setLinkFields($link_name_fields)
     {

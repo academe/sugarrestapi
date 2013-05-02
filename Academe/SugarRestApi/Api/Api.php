@@ -44,6 +44,9 @@ class Api extends ApiAbstract
     public $apiInputType = 'JSON';
     public $apiResponseType = 'JSON';
 
+    // List of relationship names and aliases.
+    public $relationship_aliases = array();
+
     // Details of any error message.
     public $sugarError = array(
         'name' => '',
@@ -359,8 +362,15 @@ class Api extends ApiAbstract
                                     $record_data = $this->nameValueListToArray($record['link_value']);
 
                                     // Now put the record into the relationship structure, without all
-                                    // the wrapper cruft of the source structure..
-                                    $linked_data[$master_sequence][$relationship_name][] = $record_data;
+                                    // the wrapper cruft of the source structure.
+                                    // Use aliases if they exist.
+                                    $alias = (
+                                        isset($this->relationship_aliases[$relationship_name])
+                                        ? $this->relationship_aliases[$relationship_name]
+                                        : $relationship_name
+                                    );
+
+                                    $linked_data[$master_sequence][$alias][] = $record_data;
                                 }
                             }
                         }
