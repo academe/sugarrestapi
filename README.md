@@ -84,6 +84,17 @@ one of your own.
     // This will return ALL records fetched so far, as an array of arrays.
     // Any linked linked contacts will be listed in the "_relationships" element.
     $entry_data = $accounts->getFields();
+    
+    // There is now interator support.
+    // Even before the first fetchPage(), you can now set up the EntryList object for accounts,
+    // with the appropriate query settings, then jump straight into a loop. The iterator will
+    // fetch a page of entries at a time internally, each time it runs out of cached entries.
+    // You don't need to wait for it to fetch all records, and you don't need to fetch one
+    // record at a time (though you can if you set the page size to 1).
+    
+    foreach($accounts as $id => $account) {
+        echo " Account ID $id is called '" . $account->name . '" ';
+    }
 
 
 The setQuery() method simply injects SQL diectly into the WHERE clause of the query run on the CRM.
