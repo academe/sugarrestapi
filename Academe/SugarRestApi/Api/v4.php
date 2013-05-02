@@ -97,14 +97,20 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     // a "warning" name/value pair explaining why.
     // TODO: this warning should perhaps be detected and put into the error log, or the record should
     // simply by discarded.
-    public function getEntries($moduleName, $ids = array(), $selectFields = array(), $linkNameFields = array())
+
+    public function getEntries(
+        $moduleName,
+        $ids = array(),
+        $selectFields = array(),
+        $linkNameFields = array()
+    )
     {
         $parameters = array(
             'session' => $this->sessionId,
             'module_name' => $moduleName,
             'ids' => $ids,
             'select_fields' => $selectFields,
-            'link_name_to_fields_array' => $linkNameFields,
+            'link_name_to_fields_array' => $this->arrayToNameValues($linkNameFields),
         );
 
         return $this->apiPost('get_entries', $parameters);
@@ -141,7 +147,17 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     // Retrieve a list of beans.
     // This is the primary method for getting list of SugarBeans from Sugar.
 
-    public function getEntryList($moduleName, $query = NULL, $order = NULL, $offset = 0, $fields = array(), $linkNameFields = array(), $limit = NULL, $deleted = false, $favourites = false)
+    public function getEntryList(
+        $moduleName,
+        $query = NULL,
+        $order = NULL,
+        $offset = 0,
+        $fields = array(),
+        $linkNameFields = array(),
+        $limit = NULL,
+        $deleted = false,
+        $favourites = false
+    )
     {
         $parameters = array(
             'session' => $this->sessionId,
@@ -248,7 +264,13 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     }
 
     // Retrieve a single SugarBean based on ID.
-    public function getEntry($moduleName, $id, $fields = array(), $linkNameFields = array(), $trackView = false)
+    public function getEntry(
+        $moduleName,
+        $id,
+        $fields = array(),
+        $linkNameFields = array(),
+        $trackView = false
+    )
     {
         $parameters = array(
             'session' => $this->sessionId,
@@ -359,7 +381,16 @@ class v4 extends \Academe\SugarRestApi\Api\Api
 
     // Retrieve a collection of beans that are related to the specified bean and optionally return
     // relationship data for those related beans.
-    public function getRelationships($moduleName, $beanId, $linkFieldName, $relatedModuleQuery, $relatedFields, $relatedModuleLinkNameFields, $deleted = false, $orderBy = '')
+    public function getRelationships(
+        $moduleName,
+        $beanId,
+        $linkFieldName,
+        $relatedModuleQuery,
+        $relatedFields,
+        $relatedModuleLinkNameFields,
+        $deleted = false,
+        $orderBy = ''
+    )
     {
         $parameters = array(
             'session' => $this->sessionId,

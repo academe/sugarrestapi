@@ -61,6 +61,9 @@ class EntryList implements \Countable, \Iterator
      * It would be nice to support other array functions too, such as reset($arr), next($arr),
      * end($arr) etc. but this will do for now.
      * Note we are not handling exceptions in here yet.
+     *
+     * Warning: do not remove any entries from the list while looping over them, as it scres up
+     * the cursor so the loop loses track of where it is. I need to find a solution to this.
      */
 
     // This is the total count of records, regardless of whether we have fetched them
@@ -205,6 +208,7 @@ class EntryList implements \Countable, \Iterator
 
         // We must include the id, otherwise we can't update the entry.
         // We will rely on there being an ID for indexing too.
+        // We are using the id for the entry keys throughout, so always include it.
         if (!in_array('id', $this->fieldlist)) $this->fieldlist[] = 'id';
 
         return $this;
@@ -274,7 +278,9 @@ class EntryList implements \Countable, \Iterator
     public function clearResults()
     {
         $this->offset = 0;
-        $this->fieldlist = array();
+        // Don't clear the field list every time we change the query parameters.
+        // The selected fields does not affect the selection.
+        //$this->fieldlist = array();
         $this->result_count = 0;
         $this->total_count = 0;
         $this->list_complete = false;
@@ -310,44 +316,12 @@ class EntryList implements \Countable, \Iterator
         return $result;
     }
 
-    // Run the query and fetch records.
-    // We will fetch up to a page of entries (records) into $entryList.
-    // A counter will be kept so we know how far through the list we are, and each
-    // fetchPage() will fetch the next page.
-    // Changing any parameters of the query should reset the fetched record list,
-    // so we start fetching from the first page again.
+    // Handle (parse and store) a set of returned entries records.
+    // A number of different API calls will return lists entries in the same
+    // format, so we can process them all in the same way.
 
-    public function fetchPage($count = 0)
+    public function parseEntryList($entry_list)
     {
-        // TODO: check the query details are sufficient and the API and session is set up.
-
-        // The limit to the number of entries we are asking for.
-        $limit = (!empty($count) ? $count : $this->pageSize);
-
-        $entry_list = $this->api->getEntryList(
-            $this->module,
-            $this->query,
-            $this->order_by,
-            $this->offset,
-            $this->fieldlist,
-            $this->link_name_fields,
-            $limit,
-            false, // deleted
-            false // favourites
-        );
-
-        // Useful elements: result_count, total_count, offset, [entry_list]
-        // TODO: check not an error in the API.
-        if (is_array($entry_list)) {
-            $this->result_count = $entry_list['result_count'];
-            $this->total_count = $entry_list['total_count'];
-            $this->offset = $entry_list['next_offset'];
-        }
-
-        // The set is complete if we have been returned fewer than the number of entries
-        // that fit in page quantity that was requested.
-        if ($this->result_count < $limit) $this->list_complete = true;
-
         // If there are relationship fields retrieved, then parse those first, as we
         // will be moving them to the individual entries as they are processed.
         // The structure of this goes pretty deep. For each entry retrieved there will
@@ -380,6 +354,48 @@ class EntryList implements \Countable, \Iterator
         return $this;
     }
 
+    // Run the query and fetch records.
+    // We will fetch up to a page of entries (records) into $entryList.
+    // A counter will be kept so we know how far through the list we are, and each
+    // fetchPage() will fetch the next page.
+    // Changing any parameters of the query should reset the fetched record list,
+    // so we start fetching from the first page again.
+
+    public function fetchPage($count = 0)
+    {
+        // TODO: check the query details are sufficient and the API and session is set up.
+
+        // The limit to the number of entries we are asking for.
+        $limit = (!empty($count) ? $count : $this->pageSize);
+
+        $entry_list = $this->api->getEntryList(
+            $this->module,
+            $this->query,
+            $this->order_by,
+            $this->offset,
+            $this->fieldlist,
+            $this->link_name_fields,
+            $limit,
+            false, // deleted
+            false // favourites
+        );
+        //echo "<pre>"; var_dump($this->link_name_fields); echo "</pre>";
+
+        // Useful elements: result_count, total_count, offset, [entry_list]
+        // TODO: check not an error in the API.
+        if (is_array($entry_list)) {
+            $this->result_count = $entry_list['result_count'];
+            $this->total_count = $entry_list['total_count'];
+            $this->offset = $entry_list['next_offset'];
+        }
+
+        // The set is complete if we have been returned fewer than the number of entries
+        // that fit in page quantity that was requested.
+        if ($this->result_count < $limit) $this->list_complete = true;
+
+        return $this->parseEntryList($entry_list);
+    }
+
     // Fetch all rows that match the query.
     // We will do it a page at a time, so set the page size higher if you want to do
     // it in fewer API calls.
@@ -403,6 +419,34 @@ class EntryList implements \Countable, \Iterator
         }
 
         return $this;
+    }
+
+    // Fetch entries based on a list of entry IDs.
+    // This works throuigh the iterator too. In this case, the full set of records will always
+    // be fetched in one go.
+    public function fetchEntries($ids)
+    {
+        // Reset any list we have already as this is a single, distinct batch.
+        $this->clearResults();
+
+        // Fetch them.
+        $entry_list = $this->api->getEntries(
+            $this->module,
+            $ids,
+            $this->fieldlist,
+            $this->link_name_fields
+        );
+        //echo "<pre>"; var_dump($this->link_name_fields); echo "</pre>";
+        //echo "<pre>"; var_dump($entry_list); echo "<pre>";
+        if (isset($entry_list['entry_list'])) {
+            $this->result_count = count($entry_list['entry_list']);
+            $this->total_count = count($entry_list['entry_list']);
+        }
+
+        $this->offset = 0;
+        $this->list_complete = true;
+
+        return $this->parseEntryList($entry_list);
     }
 
     // Save any records that have been changed.
@@ -432,6 +476,8 @@ class EntryList implements \Countable, \Iterator
     // Note: This does not delete an entry from the CRM.
     // Use this to discard the odd entry after fetching, where the subtleties of selection
     // did not allow you to filter the entries properly to start with.
+    // TODO: we also need to account for this in counts. Keep a running total of the number
+    // of entries removed, then take that number from the total count whenever it is asked for.
 
     public function removeEntry($id)
     {
