@@ -11,7 +11,7 @@ namespace Academe\SugarRestApi;
 
 //use Academe\SugarRestApi\Api as Api;
 
-class EntryList
+class EntryList implements \Countable, \Iterator
 {
     // The query we are running.
     public $query = null;
@@ -53,6 +53,79 @@ class EntryList
 
     // Set to true if the current list of entries is completely fetched.
     public $list_complete = false;
+
+    /**
+     * Methods to support Countable and Iterator.
+     * These support foreach():
+     *  rewind(), next(), current(), key(), valid()
+     * It would be nice to support other array functions too, such as reset($arr), next($arr),
+     * end($arr) etc. but this will do for now.
+     * Note we are not handling exceptions in here yet.
+     */
+
+    // This is the total count of records, regardless of whether we have fetched them
+    // all from the CRM yet.
+    public function count()
+    {
+        // If we have not started fetching from the CRM yet, then we won't have a count, so
+        // fetch the first page. This gives us a starting point.
+        if (!$this->fetchIsComplete() && $this->getTotalCount() == 0) {
+            $this->fetchPage();
+        }
+
+        return $this->getTotalCount();
+    }
+
+    // Initialise the loop: fetch the first page, if necessary, and reset the array pointer.
+    public function rewind()
+    {
+        // Get at least one page of data to start things off.
+        if (!$this->fetchIsComplete() && $this->getTotalCount() == 0) {
+            $this->fetchPage();
+        }
+
+        // Reset our internal pointer on the result array to the start.
+        reset($this->entry_list);
+    }
+
+    // Move the pointer on for the array.
+    // We don't need to worry about going off the end of the array of so-far-fetched entries
+    // at this point, as it is handled by valid().
+    public function next()
+    {
+        next($this->entry_list);
+    }
+
+    // The current element is returned.
+    public function current() {
+        return current($this->entry_list);
+    }
+
+    // The key of the current entry is returned.
+    // Keys will always be the ID, and we force a fetch of IDs in every entry.
+    public function key() {
+        return current($this->entry_list)->id;
+    }
+
+    // If we have gone past the end of the array, and there are no more entries to
+    // fetch from the CRM, then current() will return false.
+    public function valid() {
+        // If we have reached the end of the array, but the list is not marked as
+        // complete, then fetch another page of entries.
+        if (current($this->entry_list) === false && !$this->fetchIsComplete()) {
+            $this->fetchPage();
+        }
+
+        return (current($this->entry_list) !== false);
+    }
+
+
+    // Return iterator
+    /*
+    public function getIterator() {
+        return new ArrayIterator($this->entry_list);
+    }
+    */
 
     // Set the number of entries that a page consists of.
 
@@ -178,7 +251,7 @@ class EntryList
         return $this;
     }
 
-    // Clear the results we may have already selected.
+    // Clear the results we have already selected.
     // This is required if the query is changed, so we can start again from the
     // first page.
     // TODO: check if the current retrieved data set is dirty, and if so, save it
@@ -190,18 +263,33 @@ class EntryList
         $this->result_count = 0;
         $this->total_count = 0;
         $this->list_complete = false;
+
+        // Clear the data. We may want to save changes before we do.
+        $this->entry_list = array();
     }
 
-    // Get the fields and values (an array of entries with an array of fields for each).
-    public function getFields()
+    // Get the fields and values, i.e. the fetched data.
+    // You get an array of entries with an array of fields for each.
+    // You can call getFields() for each individual entry object, or pass in
+    // the Entry ID here.
+    public function getFields($id = null)
     {
         $result = array();
 
-        foreach($this->entry_list as $entry) {
-            $result[$entry->id] = $entry->getFields();
+        if (isset($id)) {
+            if (isset($this->entry_list[$id])) {
+                $result = $this->entry_list[$id]->getFields();
 
-            // Throw in the relationships too.
-            $result[$entry->id]['_relationships'] = $entry->getRelationshipFields();
+                // Throw in the relationships too.
+                $result['_relationships'] = $this->entry_list[$id]->getRelationshipFields();
+            }
+        } else {
+            foreach($this->entry_list as $entry) {
+                $result[$entry->id] = $entry->getFields();
+
+                // Throw in the relationships too.
+                $result[$entry->id]['_relationships'] = $entry->getRelationshipFields();
+            }
         }
 
         return $result;
@@ -303,6 +391,7 @@ class EntryList
     }
 
     // Save any records that have been changed.
+
     public function save()
     {
         if (!empty($this->entry_list)) {
@@ -310,6 +399,32 @@ class EntryList
             foreach($this->entry_list as $entry) {
                 if ($entry->isDirty()) $entry->save();
             }
+        }
+    }
+
+    // Return a single Entry object.
+
+    public function getEntry($id)
+    {
+        if (isset($this->entry_list[$id])) {
+            return $this->entry_list[$id];
+        } else {
+            return null;
+        }
+    }
+
+    // Remove a single entry from the fetched list.
+    // Note: This does not delete an entry from the CRM.
+    // Use this to discard the odd entry after fetching, where the subtleties of selection
+    // did not allow you to filter the entries properly to start with.
+
+    public function removeEntry($id)
+    {
+        if (isset($this->entry_list[$id])) {
+            unset($this->entry_list[$id]);
+            return true;
+        } else {
+            return false;
         }
     }
 }
