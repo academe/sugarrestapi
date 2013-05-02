@@ -17,6 +17,14 @@ This is work-in-progress, with a long list of TODOs. I've developing it in conju
 new projects, but also trying to learn new design patterns that are frequently used but new to me. 
 If you spot a better way to do something here, just shout - feedback much appreciated.
 
+tl;dr: it's a bit tatty around the edges, but should be fully functional because I am using it in
+production, and should make working with a SugarCRM API *very* much easier than it otherwise would be, 
+and perhaps even *enjoyable*. I'm trying to do things the right way, to make this library as portable
+as I can.
+
+Oh, and why would you want to use this library? To integrate a custom web application with a SugarCRM
+application, so you can expose what you like as a custom "portal".
+
 ## Loading with composer
 
 This, in your main composer.json will load the package into your project via composer:
@@ -167,5 +175,8 @@ objects. There are some good examples here:
 https://github.com/cartalyst/sentry/blob/master/src/Cartalyst/Sentry/Sentry.php
 * Allow EntryList to operate as an iterator, so you can loop over Entries that is has 
 downloaded, but ALSO have it auto-fetch pages of new Entries as necessary.
-
+* We may need to write a SugarCRM module that handles user authentication for CRM contacts. 
+For a "self-service portal" contacts need to be authenitcated. This would require putting 
+authentication details against a contact (username, encrypted password, portal access enabled for 
+contact etc) and exposing it through the REST API (e.g. to set/reset password, authenticate a user).
 
