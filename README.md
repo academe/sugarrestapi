@@ -86,6 +86,15 @@ one of your own.
     $entry_data = $accounts->getFields();
 
 
+The setQuery() method simply injects SQL diectly into the WHERE clause of the query run on the CRM.
+It is not parsed or processed in any way to protect the CRM database. You also need to know the raw
+database column and table names to use it. It's nasty, it's very insecure (I've seen mail client 
+archiving plugins using it, and getting quoting and escaping totally wrong, resulting in server-side
+SQL errors), but it's all we have to put any kind of conditions on the query. Ideally I would like to 
+replace this inserted string with a query object of some sort, supporting bind-variables and handling
+all that stuff, and also being able to parse the query enough to recognise when there are issues with
+string quoting or calling functions in a query.
+
 There is now an Entry class used for a SugarCRM entry - a single record from a module. It can be
 used like this:
 
