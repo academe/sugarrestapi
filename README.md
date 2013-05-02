@@ -95,6 +95,10 @@ one of your own.
     foreach($accounts as $id => $account) {
         echo " Account ID $id is called '" . $account->name . '" ';
     }
+    
+    // You can start the query again, and it will interate over the cached entries and not
+    // fetch them again. If you change the query details, then the next loop will start
+    // afresh with a new set of entries.
 
 
 The setQuery() method simply injects SQL diectly into the WHERE clause of the query run on the CRM.
