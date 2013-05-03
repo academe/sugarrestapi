@@ -119,8 +119,9 @@ one of your own.
         // Return a list of contacts (if which there will be one).
         ->newEntryList('Contacts')
         
-        // Get the account name.
-        ->setLinkFields('accounts_contacts' => array('id', 'name'))
+        // Get the account name. Note we will use "account" as an alias for the full
+        // relationship name.
+        ->setLinkFields('accounts_contacts:account' => array('id', 'name'))
         
         // Fetch a contact of a known ID.
         ->fetchEntries(array($contact_id));
@@ -129,7 +130,16 @@ one of your own.
     echo $contacts->firstEntry()->first_name;
     
     // The contact's account name.
-    echo $contacts->firstEntry()->getRelationshipFields()->firstEntry()->name;
+    echo $contacts->firstEntry()->getRelationshipFields('account')->firstEntry()->name;
+    
+    // The same thing will be possible simpler still (some coding still to be done):
+    $account_name = $factory
+        ->newEntry('Contacts')
+        ->setLinkFields('accounts_contacts:account' => array('id', 'name'))
+        ->fetchEntry($contact_id)
+        ->getRelationshipFields('account')
+        ->firstEntry()
+        ->name;
 
 
 The setQuery() method simply injects SQL diectly into the WHERE clause of the query run on the CRM.
