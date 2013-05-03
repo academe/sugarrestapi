@@ -212,4 +212,6 @@ downloaded, but ALSO have it auto-fetch pages of new Entries as necessary.
 For a "self-service portal" contacts need to be authenitcated. This would require putting 
 authentication details against a contact (username, encrypted password, portal access enabled for 
 contact etc) and exposing it through the REST API (e.g. to set/reset password, authenticate a user).
+* A refactor is needed to get the method names more consistent. Some methods return objects and 
+some return arrays of data. Both are useful, but do need to be more clearly separated.
 
