@@ -47,7 +47,11 @@ class Entry
     public $link_name_fields = array();
 
     // Relationship data retrieved from the CRM.
+    // This will be an array of EntryLists, each containing Entries for each linked table.
     public $_relationships = array();
+
+    //
+    public $x = '\\Academe\\SugarRestApi\\EntryList';
 
     // Set the list of relationships and the fields we want to get from the entry
     // at the end of each relationship.
@@ -61,10 +65,22 @@ class Entry
 
     // Set the relationship data for the entry.
     // This is a read-only set of data, and is not used to update the entry when it is saved.
+    // Here we will be passed data for the relationships. This will be array data that 
+    // is sent by the API. We actually want to store those relationships each as an EntryList
+    // full of Entries. 
+    // FIXME: We are going to need to know the classname for the EntryList in order to create
+    // one.
 
     public function setRelationshipFields($relationships)
     {
-        $this->_relationships = $relationships;
+        foreach($relationships as $alias => $relationship) {
+            // The alias is the relationship name alias (which may be the relationship name
+            // if no alias was provided).
+            // FIXME: where do we get this class name from?
+            $entry_list = new \Academe\SugarRestApi\EntryList($relationship, $this->api);
+            $this->_relationships[$alias] = $entry_list;
+        }
+        //$this->_relationships = $relationships;
     }
 
     // Return the records for a single relationship, or for all relationships.
@@ -86,6 +102,7 @@ class Entry
 
     // Convert a name_value_list to a key/value array.
     // At may be worth moving this to the SugarRestApi API class.
+
     public function nameValueListToArray($nameValueList)
     {
         $array = array();
@@ -100,19 +117,25 @@ class Entry
     }
 
     // Set the object to an entry fetched from the CRM.
-    // This will overwrite everything, even an unsived dirty record.
+    // This will overwrite everything, even an unsaved dirty record.
+
     public function setEntry($entry)
     {
         if (empty($entry) || !is_array($entry)) return;
 
-        // If the module has already been set, then the entry data most be for the same module.
+        // If the module has already been set, then the entry data must be for the same module.
         if (!empty($this->_module) && !empty($entry['module_name']) && $this->_module != $entry['module_name']) {
             // TODO: raise an error.
             return;
         }
 
-        // Get the module name from the entry data, if we don't have it.
-        if (!isset($this->_module)) $this->_module = $entry['module_name'];
+        // Get the module name from the entry data, if we don't have it, and it is known.
+        // If we are turning a relationship dataset into an Entry List then we will not
+        // know the project in that relationship, at least not without further lookups into
+        // the CRM structure.
+        if (!isset($this->_module) && isset($entry['module_name'])) {
+            $this->_module = $entry['module_name'];
+        }
 
         // Copy the ID to the ID property.
         $this->_id = (isset($entry['id']) ? $entry['id'] : null);
@@ -127,10 +150,11 @@ class Entry
         } elseif (isset($entry['entry_list'])) {
             $this->_fields = $this->nameValueListToArray($entry['entry_list']);
         } else {
-            $this->_fields = array();
+            // Final fall-back - we have a key/value set of data.
+            $this->_fields = $entry;
         }
 
-        // Set state of object. It was fetched from the API, so is not dirty yet.
+        // Set state of object. It was just fetched from the CRM API, so is not dirty yet.
         $this->_dirty = false;
 
         return $this;
@@ -138,6 +162,7 @@ class Entry
 
     // Set the API reference.
     // CHECKME: is this reference pulled in correctly?
+
     public function setApi(\Academe\SugarRestApi\Api\ApiAbstract $api)
     {
         $this->_api =& $api;
@@ -276,10 +301,10 @@ class Entry
         return $this;
     }
 
-    // Get an entry by ID.
+    // Fetch an entry from the CRM by ID.
     // The module will already have been set.
     // TODO: also support ->setField('id', '{id}')->get()
-    public function get($id)
+    public function fetchEntry($id)
     {
         // TODO: Raise an exception if we don't have a reference to the API object.
         if (!is_object($this->_api)) return false;

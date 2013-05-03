@@ -122,13 +122,42 @@ class EntryList implements \Countable, \Iterator
         return (current($this->entry_list) !== false);
     }
 
+    // Allow the entry list to be populated with data that has already been selected.
 
-    // Return iterator
-    /*
-    public function getIterator() {
-        return new ArrayIterator($this->entry_list);
+    public function __construct($entry_list = array(), $api = null)
+    {
+        if (!empty($entry_list)) {
+            $this->parseEntryList($entry_list);
+        }
+
+        if (!empty($api)) {
+            $this->setApi($api);
+        }
     }
-    */
+
+
+    // Set an EntryList from data fetched already.
+    // This will normally be used to create an EntryList for Entries retrieved in a
+    // relationship.
+
+    public function setEntryList($entry_list) {
+        if (empty($entry_list) || !is_array($entry_list)) return;
+
+        // xxx
+    }
+
+    // Return the first Entry on the EntryList.
+    // Used normally when we know we have just one Entry, such as in a many-to-one
+    // relationship.
+    // Will return null if there is no first Entry.
+
+    public function firstEntry()
+    {
+        //var_dump($this->entry_list);
+        // CHECKME: can we use these?
+        //if ($this->valid()) return $this->current();
+        return reset($this->entry_list);
+    }
 
     // Set the number of entries that a page consists of.
 
@@ -328,7 +357,9 @@ class EntryList implements \Countable, \Iterator
         // be an element in the relationship_list:
         //  []['link_list'][]['name'=>'relationship_name','records'=>['link_value'=>name/value-list-of-fields] ]
 
-        $linked_data = $this->api->parseRelationshipList($entry_list);
+        if (!empty($this->api)) {
+            $linked_data = $this->api->parseRelationshipList($entry_list);
+        }
 
         // Take each entry returned, and turn them into a separate entry class.
         if (!empty($entry_list['entry_list'])) {
@@ -343,11 +374,22 @@ class EntryList implements \Countable, \Iterator
                 // If there is relationshnip data for this entry, then add it to the object.
                 if (!empty($linked_data[$entry_count])) {
                     $Entry->setRelationshipFields($linked_data[$entry_count]);
+
+//var_dump($linked_data[$entry_count]['project']);
+//$x = new \Academe\SugarRestApi\EntryList($linked_data[$entry_count]['project'], $this->api);
+//var_dump($x->firstEntry()->id); // xxx
+
                 }
 
                 $this->entry_list[$Entry->id] = $Entry;
 
                 $entry_count++;
+            }
+        } else {
+            //var_dump($entry_list);
+            foreach($entry_list as $values) { //var_dump($values); die();
+                $entry = new $this->entry_classname($values, $this->api);
+                $this->entry_list[$entry->id] = $entry;
             }
         }
 
@@ -436,8 +478,7 @@ class EntryList implements \Countable, \Iterator
             $this->fieldlist,
             $this->link_name_fields
         );
-        //echo "<pre>"; var_dump($this->link_name_fields); echo "</pre>";
-        //echo "<pre>"; var_dump($entry_list); echo "<pre>";
+
         if (isset($entry_list['entry_list'])) {
             $this->result_count = count($entry_list['entry_list']);
             $this->total_count = count($entry_list['entry_list']);
@@ -446,7 +487,9 @@ class EntryList implements \Countable, \Iterator
         $this->offset = 0;
         $this->list_complete = true;
 
-        return $this->parseEntryList($entry_list);
+        $this->parseEntryList($entry_list);
+
+        return $this;
     }
 
     // Save any records that have been changed.
