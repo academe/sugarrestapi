@@ -339,7 +339,6 @@ class Api extends ApiAbstract
 
     // Parse a relationship list returned from the API in an entry list to something 
     // more sensible.
-    // TOOD: move this to the API.
 
     public function parseRelationshipList($entry_list)
     {
@@ -372,6 +371,34 @@ class Api extends ApiAbstract
 
                                     $linked_data[$master_sequence][$alias][] = $record_data;
                                 }
+                            }
+                        }
+                    }
+                } else {
+                    // No 'link_list' in the wrapper wrapper here.
+                    // The format of the linked list data varies depending on whether we are
+                    // fetching for a single entry or multiple entries.
+                    $master_sequence = 0;
+                    foreach($link_list_wrapper as $list_sequence => $list) {
+                        if (!empty($list['records']) && is_array($list['records'])) {
+                            $relationship_name = $list['name'];
+                            foreach($list['records'] as $record) {
+                                // Now we have one single record from a related entity in name/value
+                                // pair format. We know which source entity it belongs to, we have
+                                // the relationship name, and we have field values at the end of that
+                                // relationship.
+                                // Convert it to a key=>value array.
+                                $record_data = $this->nameValueListToArray($record);
+
+                                // Now put the record into the relationship structure, without all
+                                // the wrapper cruft of the source structure.
+                                // Use aliases if they exist.
+                                $alias = (
+                                    isset($this->relationship_aliases[$relationship_name])
+                                    ? $this->relationship_aliases[$relationship_name]
+                                    : $relationship_name
+                                );
+                                $linked_data[$master_sequence][$alias][] = $record_data;
                             }
                         }
                     }

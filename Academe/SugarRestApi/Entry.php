@@ -51,7 +51,7 @@ class Entry
     public $_relationships = array();
 
     //
-    public $x = '\\Academe\\SugarRestApi\\EntryList';
+    public $entry_list_class_name = '\\Academe\\SugarRestApi\\EntryList';
 
     // Set the list of relationships and the fields we want to get from the entry
     // at the end of each relationship.
@@ -59,6 +59,17 @@ class Entry
 
     public function setLinkFields($link_name_fields)
     {
+        // Extract any aliases for the relationship names.
+        // This are expressed as "relationship-name:alias" pairs.
+        foreach($link_name_fields as $key => $value) {
+            if (strpos($key, ':') !== false) {
+                list($name, $alias) = explode(':', $key, 2);
+                $link_name_fields[$name] = $value;
+                unset($link_name_fields[$key]);
+                $this->_api->relationship_aliases[$name] = $alias;
+            }
+        }
+
         $this->link_name_fields = $link_name_fields;
         return $this;
     }
@@ -77,7 +88,7 @@ class Entry
             // The alias is the relationship name alias (which may be the relationship name
             // if no alias was provided).
             // FIXME: where do we get this class name from?
-            $entry_list = new \Academe\SugarRestApi\EntryList($relationship, $this->api);
+            $entry_list = new $this->entry_list_class_name($relationship, $this->api);
             $this->_relationships[$alias] = $entry_list;
         }
         //$this->_relationships = $relationships;
@@ -320,14 +331,15 @@ class Entry
             $this->link_name_fields,
             $trackView
         );
-
-        // TODO: also get the relationships at this point, pasre
+//var_dump($entry); echo "<hr>";
+        // Also get the relationships at this point, parse
         // them to a nicer structure, then add them using setRelationshipData()
 
         if ($this->_api->isSuccess() && !empty($entry['entry_list'])) {
             // Parse any relationship data that has been returned.
-            $linked_data = $this->api->parseRelationshipList($entry['entry_list']);
-
+            $linked_data = $this->_api->parseRelationshipList($entry);
+//var_dump($entry['relationship_list']); echo "<hr>";
+//echo "<hr>"; var_dump($linked_data); echo "<hr>";
             if (!empty($linked_data[0])) {
                 $this->setRelationshipFields($linked_data[0]);
             }

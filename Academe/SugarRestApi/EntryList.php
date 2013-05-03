@@ -361,7 +361,7 @@ class EntryList implements \Countable, \Iterator
             $linked_data = $this->api->parseRelationshipList($entry_list);
         }
 
-        // Take each entry returned, and turn them into a separate entry class.
+        // Take each entry returned from the API, and turn them into a separate entry class.
         if (!empty($entry_list['entry_list'])) {
             // Keep a count of the entries, as it is the only way to match them up to 
             // the relationship records.
@@ -374,11 +374,6 @@ class EntryList implements \Countable, \Iterator
                 // If there is relationshnip data for this entry, then add it to the object.
                 if (!empty($linked_data[$entry_count])) {
                     $Entry->setRelationshipFields($linked_data[$entry_count]);
-
-//var_dump($linked_data[$entry_count]['project']);
-//$x = new \Academe\SugarRestApi\EntryList($linked_data[$entry_count]['project'], $this->api);
-//var_dump($x->firstEntry()->id); // xxx
-
                 }
 
                 $this->entry_list[$Entry->id] = $Entry;
@@ -386,9 +381,12 @@ class EntryList implements \Countable, \Iterator
                 $entry_count++;
             }
         } else {
-            //var_dump($entry_list);
-            foreach($entry_list as $values) { //var_dump($values); die();
-                $entry = new $this->entry_classname($values, $this->api);
+            // Not API data - just arrays of entry arrays.
+            foreach($entry_list as $entry_fields) {
+                // Create a new Entry with this data.
+                $entry = new $this->entry_classname($entry_fields, $this->api);
+
+                // Store it in the list.
                 $this->entry_list[$entry->id] = $entry;
             }
         }
