@@ -104,9 +104,32 @@ one of your own.
         echo " Account ID $id is called '" . $account->name . '" ';
     }
     
-    // You can start the query again, and it will interate over the cached entries and not
+    // You can start the query again, and it will iterate over the cached entries and not
     // fetch them again. If you change the query details, then the next loop will start
     // afresh with a new set of entries.
+    
+    // If you know there is only one entry, you can pull it out of the array by itself:
+    
+    $account = $accounts->firstEntry();
+    
+    // This is also useful for many-to-one relationships. For example, you can pull out
+    // the account name of a contact like this:
+    
+    $contacts = $factory
+        // Return a list of contacts (if which there will be one).
+        ->newEntryList('Contacts')
+        
+        // Get the account name.
+        ->setLinkFields('accounts_contacts' => array('id', 'name'))
+        
+        // Fetch a contact of a known ID.
+        ->fetchEntries(array($contact_id));
+        
+    // The contact's name.
+    echo $contacts->firstEntry()->first_name;
+    
+    // The contact's account name.
+    echo $contacts->firstEntry()->getRelationshipFields()->firstEntry()->name;
 
 
 The setQuery() method simply injects SQL diectly into the WHERE clause of the query run on the CRM.
