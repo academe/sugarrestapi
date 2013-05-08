@@ -134,6 +134,10 @@ class Entry
     // Set the object to an entry fetched from the CRM.
     // This will overwrite everything, even an unsaved dirty record.
     // TODO: deprecate and change to fill().
+    // NOTE: don't forget to setEntryExists(true) if filling the object with data
+    // that we know has come from the CRM. We cannot make any assumptions about that
+    // here, even if the ID is set. This also leaves a question for setting "dirty" -
+    // see below.
 
     public function setEntry($entry)
     {
@@ -171,6 +175,8 @@ class Entry
         }
 
         // Set state of object. It was just fetched from the CRM API, so is not dirty yet.
+        // FIXME: can we make this assumption? Could we be filling a brand new Entry with
+        // data from some other source?
         $this->_dirty = false;
 
         return $this;
@@ -372,6 +378,12 @@ class Entry
     public function entryExists()
     {
         return $this->_exists;
+    }
+
+    // Set flag indication whether the entry exists in the CRM.
+    public function setEntryExists($exists = true)
+    {
+        $this->_exists = $exists;
     }
 
     // Set the fields we will be dealing with.
