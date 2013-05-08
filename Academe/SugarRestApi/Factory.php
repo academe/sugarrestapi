@@ -63,9 +63,12 @@ class Factory
     }
 
     // Set and return a new API object.
-    public function newApi($version = 4, $transport = NULL)
+    public function newApi($version = '4', $transport = NULL)
     {
-        $api_name = str_replace('{version}', $version, $this->api_class_template);
+        // Strip out underscores from the version to get the API name.
+        // This is due to the special handling of underscores in class names in PSR-0.
+
+        $api_name = str_replace('{version}', str_replace('_', '', $version), $this->api_class_template);
         $this->api = new $api_name();
 
         if (isset($transport)) {
