@@ -380,7 +380,7 @@ class EntryList implements \Countable, \Iterator
 
                 $entry_count++;
             }
-        } else {
+        } elseif (is_array($entry_list)) {
             // Not API data - just arrays of entry arrays.
             foreach($entry_list as $entry_fields) {
                 // Create a new Entry with this data.

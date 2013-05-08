@@ -50,8 +50,12 @@ class Entry
     // This will be an array of EntryLists, each containing Entries for each linked table.
     public $_relationships = array();
 
-    //
+    // The EntryList class, used to put related Entries in.
     public $entry_list_class_name = '\\Academe\\SugarRestApi\\EntryList';
+
+    // true if the Entry exists in the CRM.
+    // Note: not yet fully implemented.
+    public $_exists = false;
 
     // Set the list of relationships and the fields we want to get from the entry
     // at the end of each relationship.
@@ -129,6 +133,7 @@ class Entry
 
     // Set the object to an entry fetched from the CRM.
     // This will overwrite everything, even an unsaved dirty record.
+    // TODO: deprecate and change to fill().
 
     public function setEntry($entry)
     {
@@ -207,6 +212,7 @@ class Entry
     }
 
     // Get the fields and values (an array).
+    // Deprecate and change to getAsArray() or similar.
     public function getFields()
     {
         // Add in any relationship data if there is any.
@@ -299,6 +305,8 @@ class Entry
             // We get back the saved fields that we sent, along with any validation that
             // may have been applied to them.
             $this->setEntry($entry);
+
+            $this->_exists = true;
         }
 
         return $this->_api->isSuccess();
@@ -331,23 +339,39 @@ class Entry
             $this->link_name_fields,
             $trackView
         );
-//var_dump($entry); echo "<hr>";
+
         // Also get the relationships at this point, parse
         // them to a nicer structure, then add them using setRelationshipData()
 
         if ($this->_api->isSuccess() && !empty($entry['entry_list'])) {
             // Parse any relationship data that has been returned.
             $linked_data = $this->_api->parseRelationshipList($entry);
-//var_dump($entry['relationship_list']); echo "<hr>";
-//echo "<hr>"; var_dump($linked_data); echo "<hr>";
+
             if (!empty($linked_data[0])) {
                 $this->setRelationshipFields($linked_data[0]);
             }
 
+            // Move the fields to the field list.
             $this->setEntry(reset($entry['entry_list']));
+
+            // Handle a missing or deleted Entry.
+            // SugarCRM does not give is any indication that anything is wrong with this entry,
+            // apart from the "deleted" flag and a "warning" message.
+            if (isset($this->deleted) && $this->deleted == 1 && isset($this->warning)) {
+                $this->_exists = false;
+            } else {
+                // 
+                $this->_exists = true;
+            }
         }
 
         return $this;
+    }
+
+    // Returns true if the Entry exists on the CRM.
+    public function entryExists()
+    {
+        return $this->_exists;
     }
 
     // Set the fields we will be dealing with.
