@@ -13,7 +13,7 @@ class Factory
     public $api = NULL;
 
     // Template for the API class of a given version.
-    public $api_class_template = 'Academe\\SugarRestApi\\Api\\v{version}';
+    public $api_class_template = 'Academe\\SugarRestApi\\Api\\{version}';
 
     public $entrylist_classname = '\\Academe\\SugarRestApi\\EntryList';
     public $entry_classname = '\\Academe\\SugarRestApi\\Entry';
@@ -63,7 +63,7 @@ class Factory
     }
 
     // Set and return a new API object.
-    public function newApi($version = '4', $transport = NULL)
+    public function newApi($version = 'v4', $transport = NULL)
     {
         // Strip out underscores from the version to get the API name.
         // This is due to the special handling of underscores in class names in PSR-0.
