@@ -9,7 +9,10 @@ namespace Academe\SugarRestApi\Api;
 
 class v4portal extends v4
 {
-    public $version = '4_portal';
+    public $version = 'v4_portal';
+    public $path = '/custom';
+
+    // Call the custom authenticate contact methond on SugarCRM.
 
     public function portalAuthenticate(
         $email,
@@ -25,6 +28,8 @@ class v4portal extends v4
 
         return $this->apiPost('portal_authenticate', $parameters);
     }
+
+    // Set a password for a contact on SugarCRM.
 
     public function portalSetPassword(
         $contact_id,

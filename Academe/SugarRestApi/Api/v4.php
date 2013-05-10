@@ -11,15 +11,16 @@ namespace Academe\SugarRestApi\Api;
 
 class v4 extends \Academe\SugarRestApi\Api\Api
 {
-    public $version = '4';
+    public $version = 'v4';
 
     // Log into the CRM.
-    // If the sessionId is already set, then check we are logged in as the
+    // If the session_id is already set, then check we are logged in as the
     // correct user, so we don't need to log in again.
     // Returns true if successful.
     public function login($username = NULL, $password = NULL)
     {
         // Save the username and password so we know if we are logging in as a different user.
+        // If the details have changed, then the session will be cleared.
         $this->setAuth($username, $password);
 
         // Check if we have a valid session. If we do then no further login is needed.
@@ -40,8 +41,8 @@ class v4 extends \Academe\SugarRestApi\Api\Api
 
         if ($this->isSuccess()) {
             // Extract the session ID and user ID.
-            $this->sessionId = $result['id'];
-            $this->userId = $result['name_value_list']['user_id']['value'];
+            $this->session_id = $result['id'];
+            $this->user_id = $result['name_value_list']['user_id']['value'];
             return true;
         } else {
             return false;
@@ -54,9 +55,10 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function logout()
     {
         // If the session is open to the CRM, then log out of that.
-        if (isset($this->sessionId)) {
+        $session_id = $this->getSessionId();
+        if (isset($session_id)) {
             $parameters = array(
-                'session' => $this->sessionId,
+                'session' => $session_id,
             );
             $this->apiPost('logout', $parameters);
         }
@@ -68,7 +70,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getModuleFields($moduleName, $fieldList = array())
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_name' => $moduleName,
             'fields' => $fieldList,
         );
@@ -80,7 +82,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getUserId()
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
         );
 
         return $this->apiPost('get_user_id', $parameters);
@@ -106,7 +108,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     )
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_name' => $moduleName,
             'ids' => $ids,
             'select_fields' => $selectFields,
@@ -160,7 +162,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     )
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_name' => $moduleName,
             'query' => $query,
             'order_by' => $order,
@@ -182,7 +184,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getModuleLayout($moduleNames, $types = array('default'), $views = array('detail'), $aclCheck = true, $md5 = false)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'a_module_names' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
             'a_type' => (is_string($types) ? array($types) : $types),
             'a_view' => (is_string($views) ? array($views) : $views),
@@ -199,7 +201,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function searchByModule($searchString, $moduleNames, $offset = 0, $limit = NULL, $assignedUserId = NULL, $fields = array(), $unifiedSearchOnly = true, $favourites = false)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'search_string' => $searchString,
             'modules' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
             'offset' => $offset,
@@ -223,7 +225,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function oauthAccessToken()
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
         );
 
         return $this->apiPost('oauth_access', $parameters);
@@ -233,7 +235,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function jobQueueNext($clientId)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'clientid ' => $clientId,
         );
 
@@ -244,7 +246,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function jobQueueCycle($clientId)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'clientid ' => $clientId,
         );
 
@@ -255,7 +257,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function jobQueueRun($jobId, $clientId)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'jobid ' => $jobId,
             'clientid ' => $clientId,
         );
@@ -273,7 +275,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     )
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_name' => $moduleName,
             'id' => $id,
             'select_fields' => $fields,
@@ -288,7 +290,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getModuleFieldsMd5($moduleName)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_name' => $moduleName,
         );
 
@@ -301,7 +303,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getModuleLayoutMd5($moduleNames, $types = array('default'), $views = array('detail'), $aclCheck = true)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_name' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
             'type' => (is_string($types) ? array($types) : $types),
             'view' => (is_string($views) ? array($views) : $views),
@@ -315,7 +317,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function setEntry($moduleName, $data, $trackView = false)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_name' => $moduleName,
             'name_value_list' => $data,
             'track_view' => $trackView,
@@ -329,7 +331,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getAvailableModules($filter = 'all', $moduleNames = array())
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'filter' => $filter,
             'modules' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
         );
@@ -342,7 +344,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getLanguageDefinition($moduleNames = array(), $md5 = false)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'modules' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
             'MD5' => $md5,
         );
@@ -362,7 +364,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getLastViewed($moduleNames = array())
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_names' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
         );
 
@@ -373,7 +375,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getUpcomingActivities()
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
         );
 
         return $this->apiPost('get_upcoming_activities', $parameters);
@@ -393,7 +395,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     )
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_name' => $moduleName,
             'module_id' => $beanId,
             'link_field_name' => $linkFieldName,
@@ -411,7 +413,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function setRelationship($moduleName, $beanId, $linkFieldName, $relatedIds, $data, $delete = 0)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_name' => $moduleName,
             'module_id' => $beanId,
             'link_field_name' => $linkFieldName,
@@ -428,7 +430,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function setRelationships($moduleNames, $beanIds, $linkFieldNames, $relatedIds, $data, $delete = array())
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_names' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
             'module_ids' => (is_string($beanIds) ? array($beanIds) : $beanIds),
             'link_field_names' => $linkFieldNames,
@@ -444,7 +446,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function updateEntries($moduleName, $data)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_name' => $moduleName,
             'name_value_lists' => $data,
         );
@@ -481,7 +483,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         }
 
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'note' => $note,
         );
 
@@ -492,7 +494,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getNoteAttachment($id)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'id' => $id,
         );
 
@@ -524,7 +526,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         }
 
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'document_revision' => $revision,
         );
 
@@ -541,7 +543,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getDocumentRevision($id)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'id' => $id,
         );
 
@@ -553,7 +555,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function setCampaignMerge($targets, $campaignId)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'targets' => $targets,
             'campaign_id' => $campaignId,
         );
@@ -564,7 +566,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     public function getEntriesCount($moduleName, $query, $deleted = false)
     {
         $parameters = array(
-            'session' => $this->sessionId,
+            'session' => $this->getSessionId(),
             'module_name' => $moduleName,
             'query' => $query,
             'deleted' => $deleted,

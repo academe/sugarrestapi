@@ -13,17 +13,21 @@ abstract class ControllerAbstract
     public $client = null;
 
     // The template and expanded URL of the REST entry point.
-    public $entryPointTemplate = '{protocol}://{domain}{path}/service/v{version}/rest.php';
+    // *** DEPRECATED ***
+    public $entryPointTemplate = '{protocol}://{domain}{path}/service/{version}/rest.php';
+
+    // The full entry point URL for the REST service.
     public $entryPointUrl = '';
 
     // Placeholders for the REST entry point URL parts.
     // Use setTemplatePlaceholder() or the more specific methods
     // to set these, or created more template placeholders.
+    // *** DEPRECATED ***
     public $entryPointPlaceholders = array(
         'protocol' => 'http',
         'domain' => '',
         'path' => '',
-        'version' => '4',
+        'version' => 'v4',
     );
 
     // The text of any error messages after calling a rest resource.
@@ -36,11 +40,13 @@ abstract class ControllerAbstract
     // Set the domain in the constructor, as that will be the most common thing to change.
     public function __construct($domain = null)
     {
+        // *** DEPRECATED ***
         if (isset($domain)) {
             $this->setDomain($domain);
         }
     }
 
+    // *** DEPRECATED ***
     public function setTemplatePlaceholder($name, $value)
     {
         $this->entryPointPlaceholders[$name] = $value;
@@ -54,14 +60,17 @@ abstract class ControllerAbstract
     * If useful, then I guess we need to expand protocol, path, version etc.
     */
 
+    // *** DEPRECATED ***
     public function setProtocol($value)
     {
         return $this->setTemplatePlaceholder('protocol', $value);
     }
+    // *** DEPRECATED ***
     public function setDomain($value)
     {
         return $this->setTemplatePlaceholder('domain', $value);
     }
+    // *** DEPRECATED ***
     public function setPath($value)
     {
         return $this->setTemplatePlaceholder('path', $value);
@@ -72,10 +81,16 @@ abstract class ControllerAbstract
     * or could be a raw URL.
     */
 
+    // *** DEPRECATED ***
     public function setEntryPointTemplate($template)
     {
         $this->entryPointTemplate = $template;
         $this->entryPointUrl = '';
+    }
+
+    public function setEntryPointUrl($url)
+    {
+        $this->entryPointUrl = $url;
     }
 
     /**
@@ -83,6 +98,7 @@ abstract class ControllerAbstract
     * 'force' will rebuild unconditionally, otherwise it will not be
     * rebuilt if the URL already set.
     */
+    // *** DEPRECATED ***
     public function buildEntryPoint($force = false)
     {
         // The URL has not yet been built or we are forcing a rebuild.

@@ -9,5 +9,5 @@ namespace Academe\SugarRestApi\Api;
 
 class v41 extends v4
 {
-    public $version = '4_1';
+    public $version = 'v4_1';
 }

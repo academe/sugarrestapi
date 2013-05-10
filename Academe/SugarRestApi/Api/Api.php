@@ -12,27 +12,39 @@
 
 namespace Academe\SugarRestApi\Api;
 
+use Academe\SugarRestApi\Exception\InvalidArgumentException;
+
 class Api extends ApiAbstract
 {
-    // The rest controller.
-    // We will be using resty/resty for now, but I have no idea how generic that is,
-    // and so how easily it can be swapped out for something else.
-    // TODO: see if https://github.com/mnapoli/PHP-DI is of any use here.
+    // The rest transport controller.
+    // Will be a concrete instance of \Academe\SugarRestApi\Transport\ControllerAbstract
     public $transport = NULL;
 
-    // The URL of the REST entry point.
-    public $entryPoint = '{protocol}://{domain}{path}/service/v{version}/rest.php';
+    // The name of the class used to provide the REST transport functionality.
+    public $transport_class_name = '\Academe\SugarRestApi\Transport\ControllerGuzzle';
+
+    // Data that constructs the web service entry point URL.
+
+    public $transport_url_parts = array(
+        'protocol' => 'http',
+        'domain' => '',
+        'path' => '',
+        'version' => '',
+        'template' => '{protocol}://{domain}{path}/service/{version}/rest.php',
+        'url' => '',
+    );
 
     // The username and password used to log in.
     // To be persisted in the session.
+    // TOOD: wrap these up together (all five attributes).
     public $authUsername = '';
     public $authPassword = '';
     public $authVersion = '1';
 
     // The current Sugar session ID and the user ID this corresponds to.
     // To be persisted in the session.
-    public $sessionId;
-    public $userId;
+    public $session_id;
+    public $user_id;
 
     // The name of this application making the requests.
     public $applicationName = 'Academe_SugarRestApi';
@@ -60,6 +72,168 @@ class Api extends ApiAbstract
     public $autologout = false;
 
 
+    // Set the transport classname.
+    // If the transport class is already instantiated as a different classm, then purge
+    // the existing transport object.
+
+    public function setTransportClassName($class_name)
+    {
+        $transport_abstract_name = '\Academe\SugarRestApi\Transport\ControllerAbstract';
+
+        // Must exist as a class.
+        if (!class_exists($class_name)) {
+            // Fatal exception.
+            throw new InvalidArgumentException("Class '{$class_name}' does not exist");
+        }
+
+        // Class moust be a concrete class of the correct abstract.
+        //$ref = new \ReflectionClass($class_name);
+        if ( ! is_subclass_of($class_name, $transport_abstract_name)) {
+            throw new InvalidArgumentException("Class '{$class_name}' does not extend $transport_abstract_name");
+        }
+
+        // Set the class name.
+        $this->transport_class_name = $class_name;
+
+        // If the class has already been instantiated and it has changed, then
+        // destroy the old class.
+        // This will affect only future API calls, and not any Entries that have 
+        // already been fetched.
+        if (isset($this->transport) && get_class($this->transport) != $class_name) {
+            $this->transport = null;
+        }
+
+        return $this;
+    }
+
+    // Instantiate the transport object and set up all its parameters.
+    // Do not instantiate it if it is already there, but do set up its
+    // parameters each time, in case they have changed.
+
+    public function initTransport()
+    {
+        // If the transport object is already instantiated, then
+        // no need to do it again.
+        if (!isset($this->transport)) {
+            $this->setTransport(new $this->transport_class_name());
+        }
+
+        // Set up all its parameters...
+
+        // Set the transport entry point URL.
+        $this->buildEntryPoint();
+        $this->transport->setEntryPointUrl($this->getTransportUrlField('url'));
+
+        // Support chaining.
+        return $this;
+    }
+
+    // Setter/injecter for the rest controller.
+    // This should not normally be used externally; use initTransport instead.
+
+    public function setTransport(\Academe\SugarRestApi\Transport\ControllerAbstract $rest_controller)
+    {
+        $this->transport = $rest_controller;
+        return $this;
+    }
+
+
+    // *** DEPRECATED ***
+    public function setEntryPoint()
+    {
+        $this->transport->buildEntryPoint();
+    }
+
+    public function setTransportUrlField($name, $value)
+    {
+        $this->transport_url_parts[$name] = $value;
+
+        // When setting any placeholder that could be used to construct the URL,
+        // discard the current expanded template.
+        if ($name != 'url') $this->setTransportUrlField('url', '');
+
+        return $this;
+    }
+
+    public function getTransportUrlField($name = null)
+    {
+        if (!isset($name)) {
+            return $this->transport_url_parts;
+        } elseif (isset($this->transport_url_parts[$name])) {
+            return $this->transport_url_parts[$name];
+        } else {
+            return '';
+        }
+    }
+
+    /**
+    * Not sure if this is helpful, or the generic setTransportUrlField() will do for all instances.
+    * If useful, then I guess we need to expand protocol, path, version etc.
+    */
+
+    public function setProtocol($value)
+    {
+        return $this->setTransportUrlField('protocol', $value);
+    }
+    public function setDomain($value)
+    {
+        return $this->setTransportUrlField('domain', $value);
+    }
+    public function setPath($value)
+    {
+        return $this->setTransportUrlField('path', $value);
+    }
+    public function setUrl($value)
+    {
+        return $this->setTransportUrlField('url', $value);
+    }
+    public function setTemplate($value)
+    {
+        return $this->setTransportUrlField('template', $value);
+    }
+
+    /**
+    * Build the entry point URL from the template.
+    * 'force' will rebuild unconditionally, otherwise it will not be
+    * rebuilt if the URL already set.
+    */
+
+    public function buildEntryPoint($force = false)
+    {
+        // The URL has not yet been built or we are forcing a rebuild.
+        if ($this->getTransportUrlField('url') == '' || $force) {
+            $this->setTransportUrlField('url', $this->getTransportUrlField('template'));
+
+            // Only do this if the URL has not already been set, i.e. still contains placeholders.
+            if (strpos($this->getTransportUrlField('url'), '{') !== FALSE) {
+                // Do placeholder substitutios.
+                // We are not going to worry about the placeholders being recursive, as we know just
+                // plain text is being passed in.
+                foreach(array_keys($this->getTransportUrlField()) as $sub) {
+                    if ($sub == 'url') continue;
+                    $this->setTransportUrlField(
+                        'url',
+                        str_replace(
+                            '{'.$sub.'}',
+                            $this->getTransportUrlField($sub),
+                            $this->getTransportUrlField('url')
+                        )
+                    );
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
     // Get data that should be persisted to
     // avoid having to log in afresh on each page request.
     // TODO: include a hash of the session, so it can be cached between pages
@@ -72,48 +246,57 @@ class Api extends ApiAbstract
             // session tables and other storage.
             //$this->authPassword,
             'authVersion' => $this->authVersion,
-            'sessionId' => $this->sessionId,
-            'userId' => $this->userId,
-            // Save the name of the REST class.
+            'sessionId' => $this->getSessionId(),
+            'userId' => $this->user_id,
+            // Save the name of the REST transport controller class.
             'restClass' => get_class($this->transport),
         ));
     }
 
+    // Put a saved session back into the API.
+    // The session as a JSON string, returned from getSession().
+
+    public function putSession($session)
+    {
+        // Extract the data.
+        $data = @json_decode($session, true);
+
+        if (is_array($data)) {
+            if (isset($data['authUsername'])) $this->authUsername = $data['authUsername'];
+            if (isset($data['authVersion'])) $this->authVersion = $data['authVersion'];
+            if (isset($data['sessionId'])) $this->session_id = $data['sessionId'];
+            if (isset($data['userId'])) $this->user_id = $data['userId'];
+            if (isset($data['restClass'])) $this->setTransportClassName($data['restClass']);
+        }
+
+        return $this;
+    }
+
     // When conveting to a string for storage, return the object as a json structure.
+
     public function __toString()
     {
         return $this->getSession();
     }
 
-    // Set the REST entry point URL
-    public function setEntryPoint($url = NULL)
-    {
-        $this->transport->buildEntryPoint();
-    }
+    // Get the current CRM session ID.
 
-    /*
-    public function setEntryPoint($url = NULL)
+    public function getSessionId()
     {
-        // If no URL is passed in then construct it from the parts we know about.
-        if (!isset($url)) {
-            // Only do this if the URL has not already been set, i.e. still contains placeholders.
-            if (strpos($this->entryPoint, '{') !== FALSE) {
-                // Do placeholder substitutios.
-                // We are not going to worry about the placeholders being recursive, as we know just
-                // plain text is being passed in.
-                foreach(array('protocol', 'domain', 'path', 'version') as $sub) {
-                    $this->entryPoint = str_replace('{'.$sub.'}', $this->$sub, $this->entryPoint);
-                }
-            }
-        } else {
-            $this->entryPoint = $url;
-        }
+        return $this->session_id;
     }
-    */
 
     // Allow persistent data to be restored from the session.
     public function __construct($session = '')
     {
+        // Move the API version number into the transport array.
+        $this->setTransportUrlField('version', $this->version);
+
+        // The path may also be set for some API versions, in particular for custom APIs.
+        if (isset($this->path)) {
+            $this->setTransportUrlField('path', $this->path);
+        }
+
         if (!empty($session)) {
             // TODO: is there a better way of masking decoding errors?
             $data = @json_decode($session, true);
@@ -137,18 +320,6 @@ class Api extends ApiAbstract
         if ($this->autologout) $this->logout;
     }
 
-    // Setter/injecter for the rest controller.
-    // Perhaps we need to be able to default to resty/resty here, assuming it is set as
-    // a dependancy.
-    // The ultimate rest controller can be anything, so long as it has the interface we expect.
-
-    public function setTransport($restController /* TODO specify the interface */)
-    {
-        $this->transport = $restController;
-
-        return $this;
-    }
-
     // Set the username and password authentication credentials.
     // They can be passed in here or wait until logging in.
     // If the details are not the same as already stored, then make
@@ -161,10 +332,12 @@ class Api extends ApiAbstract
             if ($this->authUsername != $username) $detailsChanged = true;
             $this->authUsername = $username;
         }
+
         if (isset($password)) {
             //if ($this->authPassword = $password) $detailsChanged = true;
             $this->authPassword = $password;
         }
+
         if (isset($version)) $this->authVersion = $version;
 
         // If the credentials have changed, then we need to log in as a different user,
@@ -180,15 +353,17 @@ class Api extends ApiAbstract
     public function validateSession()
     {
         // If we have no session ID, then we are certain not to be logged on.
-        if (!isset($this->sessionId)) return false;
+        if (!isset($this->session_id)) return false;
 
-        // We have a session ID - test it.
-        $userId = $this->getUserId();
-        if ($userId = $this->userId) {
+        // We have a session ID - test it. Get the user ID for the current session
+        // from the CRM.
+        $user_id = $this->getUserId();
+
+        if ($user_id == $this->user_id) {
             return true;
         } else {
             // The user ID for the session does not match that stored,
-            // or the user ID could not be retrived. The session is bad, so
+            // or the user ID could not be retrieved. The session is bad, so
             // clear it.
             $this->clearSession();
 
@@ -199,11 +374,11 @@ class Api extends ApiAbstract
     // Clear details of the current session, so the next call results in (or requires) a login first.
     public function clearSession($destroyCredentials = false)
     {
-        $this->sessionId = null;
-        $this->userId = null;
+        $this->session_id = null;
+        $this->user_id = null;
 
         if ($destroyCredentials) {
-            $this-setAuth('', '');
+            $this->setAuth('', '');
         }
     }
 
@@ -237,8 +412,8 @@ class Api extends ApiAbstract
     // TODO: GET, PUT etc.
     public function callRest($data, $method = 'POST')
     {
-        // Make sure the entry point URL is set.
-        $this->setEntryPoint();
+        // Make sure the transport is instantiated and configured.
+        $this->initTransport();
 
         switch (strtoupper($method)) {
             case 'POST':
@@ -263,6 +438,7 @@ class Api extends ApiAbstract
         }
 
         // The return data should already be expanded into a nested array by the transport class.
+        // Most APIs return arrays, including when errors occur, but some return strings.
         if ($returnData && is_array($returnData)) {
             // Errors are returned as a triplet of properties: name, number and description.
             // If we find these three, then an error has occurred and the method call was
@@ -278,6 +454,9 @@ class Api extends ApiAbstract
                 $this->sugarError['number'] = '';
             }
 
+            return $returnData;
+        } elseif (is_string($returnData)) {
+            // get_user_id() is an example that returns a string.
             return $returnData;
         }
 
