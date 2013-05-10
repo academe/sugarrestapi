@@ -17,17 +17,19 @@ Minimal use is now something like this:
         
     // If the login_status is true, then you can call up SugarCRM API methods directory.
     // e.g. Get the ID of your user logged into Sugar.
-    $my_user_id = $v4_api->getUserId();
+    $my_sugar_user_id = $v4_api->getUserId();
     
     // Once logged in, you can get the session details as a string:
     $session_json = $v4_api->getSession();
     
-    // That can be saved in the user's local session, or on an application-wide basis, so that
+    // That can be saved in the user's browsing session, or on an application-wide basis, so that
     // the number of login sessions on sugar can be kept in check.
     // The next page would resuse that session like this:
+    
     $login_status = $v4_api
         ->putSession($session_json)
         ->login('username', 'password');
+        
     // Or pass $session_jason into constructor when creating v4().
     // If that session already exists and is still valid on the SugarCRM application, then it will be
     // used. If the session is no longer valid, then the user will be automatically logged into a new
