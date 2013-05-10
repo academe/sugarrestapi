@@ -54,6 +54,10 @@ class EntryList implements \Countable, \Iterator
     // Set to true if the current list of entries is completely fetched.
     public $list_complete = false;
 
+    // A hard limit on the number of entries to fetch., regardless of the page size
+    // and the number of results in the query.
+    public $hard_limit = null;
+
     /**
      * Methods to support Countable and Iterator.
      * These support foreach():
@@ -170,6 +174,20 @@ class EntryList implements \Countable, \Iterator
         return $this;
     }
 
+    // Set a hard limit on the number of Entries we can bring back on a single
+    // query.
+
+    public function setHardLimit($limit = null)
+    {
+        $this->hard_limit = $limit;
+        return $this;
+    }
+
+    public function getHardLimit()
+    {
+        return $this->hard_limit;
+    }
+
     // Set the module for this generic entry object.
     // The module can only be set once and not changed.
     public function setModule($module)
@@ -184,6 +202,22 @@ class EntryList implements \Countable, \Iterator
     // Will only be populated after the first fetchPage()
 
     public function getTotalCount()
+    {
+        // If there is a hard limit on the number of Entries to fetch, then
+        // make sure that hard limit is a ceiling. This will enable for-loops
+        // to stop at the correct point.
+
+        if (!empty($this->hard_limit)) {
+            return min($this->total_count, $this->hard_limit);
+        } else {
+            return $this->total_count;
+        }
+    }
+
+    // The number of Entries in the last query, regardless of any hard limit
+    // we have set.
+
+    public function getTotalDatabaseCount()
     {
         return $this->total_count;
     }
@@ -214,7 +248,7 @@ class EntryList implements \Countable, \Iterator
     }
 
     // Set the API reference.
-    // CHECKME: is this reference pulled in correctly?
+    // CHECKME: can we use "Api\ApiAbstract" alone as a hint?
     public function setApi(\Academe\SugarRestApi\Api\ApiAbstract $api)
     {
         $this->api = $api;
@@ -400,13 +434,27 @@ class EntryList implements \Countable, \Iterator
     // fetchPage() will fetch the next page.
     // Changing any parameters of the query should reset the fetched record list,
     // so we start fetching from the first page again.
+    // With $limit you can set a page size for this page only.
 
-    public function fetchPage($count = 0)
+    public function fetchPage($limit = 0)
     {
         // TODO: check the query details are sufficient and the API and session is set up.
+        if ($this->list_complete == true) return $this;
 
-        // The limit to the number of entries we are asking for.
-        $limit = (!empty($count) ? $count : $this->pageSize);
+        // The number of Entries we have fetched so far.
+        // This must not excede the hard limit, if set.
+        $current_fetch_count = $this->getFetchCount();
+
+        $hard_limit = $this->getHardLimit();
+
+        // If count is not set, then use the current selected page size.
+        if (empty($limit)) $limit = $this->pageSize;
+
+        // If there is a hard limit, then make sure we do not excede that, by
+        // cutting down the page size if we are nearly there.
+        if ( ! empty($hard_limit)) {
+            $limit = min($limit, $hard_limit - $current_fetch_count);
+        }
 
         $entry_list = $this->api->getEntryList(
             $this->module,
@@ -419,18 +467,27 @@ class EntryList implements \Countable, \Iterator
             false, // deleted
             false // favourites
         );
-        //echo "<pre>"; var_dump($this->link_name_fields); echo "</pre>";
 
-        // Useful elements: result_count, total_count, offset, [entry_list]
-        // TODO: check not an error in the API.
+        // Useful elements: result_count, total_count, offset
+        // TODO: check not an error in the API first.
         if (is_array($entry_list)) {
             $this->result_count = $entry_list['result_count'];
-            $this->total_count = $entry_list['total_count'];
+
+            // The total count is not always available, so we cannot rely on it, which is 
+            // a bit of a shame as we need it to suppport for-loops. We will have to do
+            // something about that, and perhaps use a different method of itterating over the
+            // entries in way that does not need to know how many records there are.
+            if (isset($entry_list['total_count'])) $this->total_count = $entry_list['total_count'];
+
             $this->offset = $entry_list['next_offset'];
         }
 
+        if ( ! empty($hard_limit) && ($current_fetch_count + $limit) >= $hard_limit) {
+            $this->list_complete = true;
+        }
+
         // The set is complete if we have been returned fewer than the number of entries
-        // that fit in page quantity that was requested.
+        // that was requested.
         if ($this->result_count < $limit) $this->list_complete = true;
 
         return $this->parseEntryList($entry_list);
@@ -448,6 +505,7 @@ class EntryList implements \Countable, \Iterator
         while (!$this->fetchIsComplete()) {
             if ($limit > 0) {
                 if ($this->getFetchCount() >= $limit) return $this;
+
                 if (($limit - $this->getFetchCount()) < $this->pageSize) {
                     // We have less than a page to go before we reach the limit, so 
                     // set the next fetch count a little smaller.

@@ -150,6 +150,10 @@ class Api extends ApiAbstract
 
     public function setTransportUrlField($name, $value)
     {
+        // The values all need to be strings; ignore any that are not.
+        if (!isset($value) || !is_string($value)) return $this;
+
+        // Set the field value.
         $this->transport_url_parts[$name] = $value;
 
         // When setting any placeholder that could be used to construct the URL,
