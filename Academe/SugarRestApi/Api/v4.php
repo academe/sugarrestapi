@@ -601,7 +601,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         $EntryList->entry_classname = $this->entry_classname;
 
         // Give it access to this API.
-        $EntryList->setApi($this->api);
+        $EntryList->setApi($this);
 
         // Set the module if not already set.
         $EntryList->setModule($module_name);
