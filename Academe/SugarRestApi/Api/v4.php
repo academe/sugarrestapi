@@ -574,4 +574,38 @@ class v4 extends \Academe\SugarRestApi\Api\Api
 
         return $this->apiPost('get_entries_count', $parameters);
     }
+
+    // Return a new entry object.
+
+    public function newEntry($module)
+    {
+        $Entry = new $this->entry_classname();
+
+        // Give it access to this API.
+        $Entry->setApi($this);
+
+        // Set the module if not already set.
+        $Entry->setModule($module);
+
+        return $Entry;
+    }
+
+    // Return a new entry list object.
+
+    public function newEntryList($module_name)
+    {
+        // Create the new EntryList object.
+        $EntryList = new $this->entrylist_classname();
+
+        // Tell the object the name of the Entry class to use.
+        $EntryList->entry_classname = $this->entry_classname;
+
+        // Give it access to this API.
+        $EntryList->setApi($this->api);
+
+        // Set the module if not already set.
+        $EntryList->setModule($module_name);
+
+        return $EntryList;
+    }
 }

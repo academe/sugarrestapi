@@ -21,7 +21,11 @@ class Api extends ApiAbstract
     public $transport = NULL;
 
     // The name of the class used to provide the REST transport functionality.
-    public $transport_class_name = '\Academe\SugarRestApi\Transport\ControllerGuzzle';
+    public $transport_class_name = '\\Academe\\SugarRestApi\\Transport\\ControllerGuzzle';
+
+    // Class names for various CRM objects and collections.
+    public $entrylist_classname = '\\Academe\\SugarRestApi\\EntryList';
+    public $entry_classname = '\\Academe\\SugarRestApi\\Entry';
 
     // Data that constructs the web service entry point URL.
 
@@ -150,7 +154,18 @@ class Api extends ApiAbstract
 
         // When setting any placeholder that could be used to construct the URL,
         // discard the current expanded template.
-        if ($name != 'url') $this->setTransportUrlField('url', '');
+        if ($name != 'url') {
+            $this->setTransportUrlField('url', '');
+        }
+
+        return $this;
+    }
+
+    public function setTransportUrlFields($fields)
+    {
+        if (is_array($fields)) {
+            $this->transport_url_parts = array_merge($this->transport_url_parts, $fields);
+        }
 
         return $this;
     }
@@ -164,6 +179,11 @@ class Api extends ApiAbstract
         } else {
             return '';
         }
+    }
+
+    public function getTransportUrlFields()
+    {
+        return $this->getTransportUrlField();
     }
 
     /**
@@ -225,19 +245,12 @@ class Api extends ApiAbstract
     }
 
 
-
-
-
-
-
-
-
-
-
     // Get data that should be persisted to
     // avoid having to log in afresh on each page request.
-    // TODO: include a hash of the session, so it can be cached between pages
-    // in an application, allowing each unique conection to be cached separately.
+    // The transport details are now included, since the session is only
+    // relevant for those details.
+    // The password is never included for security, so will need to be provided
+    // from another source on every page the session is used.
     public function getSession()
     {
         return json_encode(array(
@@ -250,6 +263,8 @@ class Api extends ApiAbstract
             'userId' => $this->user_id,
             // Save the name of the REST transport controller class.
             'restClass' => get_class($this->transport),
+            // Transport details enabling us to get to the CRM.
+            'transportDetails' => $this->getTransportUrlFields(),
         ));
     }
 
@@ -267,6 +282,9 @@ class Api extends ApiAbstract
             if (isset($data['sessionId'])) $this->session_id = $data['sessionId'];
             if (isset($data['userId'])) $this->user_id = $data['userId'];
             if (isset($data['restClass'])) $this->setTransportClassName($data['restClass']);
+            if (isset($data['transportDetails']) && is_array($data['transportDetails'])) {
+                $this->setTransportUrlFields($data['transportDetails']);
+            }
         }
 
         return $this;
