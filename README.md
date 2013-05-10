@@ -22,6 +22,9 @@ Minimal use is now something like this:
     // Once logged in, you can get the session details as a string:
     $session_json = $v4_api->getSession();
     
+    // Or fetch a contact entry.
+    $contact = $v4_api->newEntry('Contacts')->fetchEntry('d9876655-fe36-f7dd-a085-510a7afc8e75');
+    
     // That can be saved in the user's browsing session, or on an application-wide basis, so that
     // the number of login sessions on sugar can be kept in check.
     // The next page would resuse that session like this:
