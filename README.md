@@ -5,6 +5,34 @@ I've tried to implement a factory to return entries and lists of entries, but it
 For example, I've moved from Resty to Guzzle, but we have a middle transport abstract to standardise 
 the transport layer, so other HTTP libraries could be used if required.**_
 
+_**2013-05-10 The factory class is going, and being absorbed into the API class. Some of the functions
+in the transport controller are also going into the API. This should make the whole thing a lot easier to
+use.**_
+
+Minimal use is now something like this:
+
+    $v4_api = new Academe\SugarRestApi\Api\v4();
+    $login_status = $v4_api->setDomain('www.example.com')
+        ->login('username', 'password');
+        
+    // If the login_status is true, then you can call up SugarCRM API methods directory.
+    // e.g. Get the ID of your user logged into Sugar.
+    $my_user_id = $v4_api->getUserId();
+    
+    // Once logged in, you can get the session details as a string:
+    $session_json = $v4_api->getSession();
+    
+    // That can be saved in the user's local session, or on an application-wide basis, so that
+    // the number of login sessions on sugar can be kept in check.
+    // The next page would resuse that session like this:
+    $login_status = $v4_api
+        ->putSession($session_json)
+        ->login('username', 'password');
+    // Or pass $session_jason into constructor when creating v4().
+    // If that session already exists and is still valid on the SugarCRM application, then it will be
+    // used. If the session is no longer valid, then the user will be automatically logged into a new
+    // session, so there is no additional action to perform.
+
 A simple library, using the Guzzle REST library (others can be used if desired) to
 handle the API for SugarCRM.
 
