@@ -100,8 +100,19 @@ class Entry
 
     // Return the records for a single relationship, or for all relationships.
     // The relationship name is the name as seen in SugarCRM Studio.
+    // FIXME: each relationship is an EntryList, and so we need to go through
+    // each to convert to an array, recursively.
 
+    // ** Depracated**
+    // Use getRelationshipAsArray() instead
     public function getRelationshipFields($relationship_name = null)
+    {
+        return getRelationshipAsArray($relationship_name);
+    }
+
+    // Get a single relationship as an array.
+
+    public function getRelationshipAsArray($relationship_name = null)
     {
         if (!isset($relationship_name)) {
             return $this->_relationships;
@@ -112,6 +123,13 @@ class Entry
                 return array();
             }
         }
+    }
+
+    // Get all relationships, as arrays.
+
+    public function getRelationshipsAsArray()
+    {
+        return $this->getRelationshipAsArray();
     }
 
 
@@ -218,8 +236,13 @@ class Entry
     }
 
     // Get the fields and values (an array).
-    // Deprecate and change to getAsArray() or similar.
+    // ** Deprecated **
+    // Use getAsArray() instead.
     public function getFields()
+    {
+        return $this->getAsArray();
+    }
+    public function getAsArray()
     {
         // Add in any relationship data if there is any.
         if (!empty($this->_relationships)) {

@@ -356,23 +356,33 @@ class EntryList implements \Countable, \Iterator
     // You get an array of entries with an array of fields for each.
     // You can call getFields() for each individual entry object, or pass in
     // the Entry ID here.
+
+    // ** DEPRECATED **
+    // Use getAsArray() instead.
     public function getFields($id = null)
+    {
+        return $this->getAsArray($id);
+    }
+
+    // Get a single entry or all entries as an array.
+
+    public function getAsArray($id = null)
     {
         $result = array();
 
         if (isset($id)) {
             if (isset($this->entry_list[$id])) {
-                $result = $this->entry_list[$id]->getFields();
+                $result = $this->entry_list[$id]->getAsArray();
 
                 // Throw in the relationships too.
-                $result['_relationships'] = $this->entry_list[$id]->getRelationshipFields();
+                $result['_relationships'] = $this->entry_list[$id]->getRelationshipsAsArray();
             }
         } else {
             foreach($this->entry_list as $entry) {
-                $result[$entry->id] = $entry->getFields();
+                $result[$entry->id] = $entry->getAsArray();
 
                 // Throw in the relationships too.
-                $result[$entry->id]['_relationships'] = $entry->getRelationshipFields();
+                $result[$entry->id]['_relationships'] = $entry->getRelationshipsAsArray();
             }
         }
 
@@ -410,7 +420,8 @@ class EntryList implements \Countable, \Iterator
                     $Entry->setRelationshipFields($linked_data[$entry_count]);
                 }
 
-                $this->entry_list[$Entry->id] = $Entry;
+                //$this->entry_list[$Entry->id] = $Entry;
+                $this->addEntry($Entry->id, $Entry);
 
                 $entry_count++;
             }
@@ -520,7 +531,7 @@ class EntryList implements \Countable, \Iterator
     }
 
     // Fetch entries based on a list of entry IDs.
-    // This works throuigh the iterator too. In this case, the full set of records will always
+    // This works through the iterator too. In this case, the full set of records will always
     // be fetched in one go.
     public function fetchEntries($ids)
     {
@@ -586,5 +597,14 @@ class EntryList implements \Countable, \Iterator
         } else {
             return false;
         }
+    }
+
+    // Add a new entry to the list. This is useful when merging
+    // lists together.
+    // TODO: type hint to make sure the right kind of object is passed in.
+
+    public function addEntry($id, $entry)
+    {
+        $this->entry_list[$id] = $entry;
     }
 }
