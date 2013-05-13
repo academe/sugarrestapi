@@ -103,7 +103,7 @@ class Entry
     // FIXME: each relationship is an EntryList, and so we need to go through
     // each to convert to an array, recursively.
 
-    // ** Depracated**
+    // ** DEPRECATED **
     // Use getRelationshipAsArray() instead
     public function getRelationshipFields($relationship_name = null)
     {
@@ -130,6 +130,20 @@ class Entry
     public function getRelationshipsAsArray()
     {
         return $this->getRelationshipAsArray();
+    }
+
+    // Get a single relationship EntryList
+    public function getRelationshipList($relationship_name = null)
+    {
+        if (!isset($relationship_name)) {
+            return $this->_relationships;
+        } else {
+            if (isset($this->_relationships[$relationship_name])) {
+                return $this->_relationships[$relationship_name];
+            } else {
+                return NULL;
+            }
+        }
     }
 
 
