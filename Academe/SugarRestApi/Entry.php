@@ -107,7 +107,7 @@ class Entry
     // Use getRelationshipAsArray() instead
     public function getRelationshipFields($relationship_name = null)
     {
-        return getRelationshipAsArray($relationship_name);
+        return $this->getRelationshipAsArray($relationship_name);
     }
 
     // Get a single relationship as an array.
