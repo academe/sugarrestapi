@@ -25,9 +25,9 @@ class Api extends ApiAbstract
 
     // Class names for various CRM objects and collections.
     // TODO: namespace these classes by the API version and physically move them.
-    public $entrylist_classname = '\\Academe\\SugarRestApi\\EntryList';
-    public $entry_classname = '\\Academe\\SugarRestApi\\Entry';
-    public $module_classname = '\\Academe\\SugarRestApi\\Module';
+    public $entrylist_classname = '\\Academe\\SugarRestApi\\Model\\EntryList';
+    public $entry_classname = '\\Academe\\SugarRestApi\\Model\\Entry';
+    public $module_classname = '\\Academe\\SugarRestApi\\Model\\Module';
 
     // Details that constructs the web service entry point URL.
     // 'url' is the final URL, constructed from 'template' with any of the remaining
@@ -546,7 +546,7 @@ class Api extends ApiAbstract
     // to be arrays.
     // The array is modified in-situ by reference.
 
-    public function nameValuesToKeyValues(& $array)
+    public function nameValuesToKeyValues(&$array)
     {
         // Start the walk.
         array_walk($array, array(&$this, 'nameValuesToKeyValuesCallback'));
@@ -563,7 +563,7 @@ class Api extends ApiAbstract
             if (
                 count($value) == 2
                 && isset($value['name'])
-                && is_string($value['name'])
+                && (is_string($value['name']) || is_numeric($value['name']))
                 && isset($value['value']) // Will this miss NULL values?
                 && $key == $value['name']
             ) {

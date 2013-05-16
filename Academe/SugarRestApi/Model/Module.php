@@ -4,11 +4,11 @@
  * Class to handle and fetch details about a SugarCRM module.
  */
 
-namespace Academe\SugarRestApi;
+namespace Academe\SugarRestApi\Model;
 
-use Academe\SugarRestApi\ApiInterface as ApiInterface;
+use Academe\SugarRestApi\Model\ApiInterface as ApiInterface;
 
-class Module extends DataAbstract
+class Module extends ModelAbstract
 {
     // The result of API call getModuleFields(), parsed to remove name/value pair lists.
     public $module_fields = NULL;
@@ -45,6 +45,9 @@ class Module extends DataAbstract
         // Get the module fields from the CRM.
         $data = $this->api->getModuleFields($this->module);
 
+        //$this->api->nameValuesToKeyValues($data);
+        echo "<pre>"; var_dump($data); die(); echo "</pre>";
+
         // If the fetch has worked, we will have an array of fields and links.
         if (is_array($data)) {
             if (isset($data['module_fields'])) {
@@ -65,6 +68,7 @@ class Module extends DataAbstract
             }
         } else {
             // Not got what we expected from tha CRM.
+            // CHECKME: return null?
             return false;
         }
     }

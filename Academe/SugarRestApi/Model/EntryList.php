@@ -7,9 +7,7 @@
  * @todo method save() - save all entries.
  */
 
-namespace Academe\SugarRestApi;
-
-//use Academe\SugarRestApi\Api as Api;
+namespace Academe\SugarRestApi\Model;
 
 class EntryList extends DataAbstract implements \Countable, \Iterator
 {

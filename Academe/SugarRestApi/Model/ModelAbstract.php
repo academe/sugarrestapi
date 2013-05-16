@@ -4,9 +4,9 @@
  * Abstract functions and properties shared by all classes modeling data structures on the CRM.
  */
 
-namespace Academe\SugarRestApi;
+namespace Academe\SugarRestApi\Model;
 
-abstract class DataAbstract implements DataInterface{
+abstract class ModelAbstract implements ModelInterface{
     //abstract public function getSession();
     // The name of the module, e.g. "Contacts", "Accounts"..
     protected $module = null;

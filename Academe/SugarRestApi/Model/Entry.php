@@ -11,7 +11,7 @@
 
 namespace Academe\SugarRestApi;
 
-use Academe\SugarRestApi\ApiInterface as ApiInterface;
+use Academe\SugarRestApi\ApiInterface\Model as ApiInterface;
 
 class Entry extends DataAbstract
 {
@@ -49,9 +49,6 @@ class Entry extends DataAbstract
     // Relationship data retrieved from the CRM.
     // This will be an array of EntryLists, each containing Entries for each linked table.
     public $_relationships = array();
-
-    // The EntryList class, used to put related Entries in.
-    //public $entry_list_class_name = '\\Academe\\SugarRestApi\\EntryList';
 
     // true if the Entry exists in the CRM.
     // Note: not yet fully implemented.
@@ -209,7 +206,7 @@ class Entry extends DataAbstract
     // fields will be overwritten, but can be merged instead by setting $overrite
     // to false.
     // Data is a key/value array.
-    public function setFields($fields = array(), $overwrite = true)
+    public function setFields($fields, $overwrite = true)
     {
         $this->_dirty = true;
 
@@ -218,6 +215,8 @@ class Entry extends DataAbstract
         } else {
             $this->_fields = array_merge($this->_fields, $fields);
         }
+
+        return $this;
     }
 
     // Set the value for a single field.
@@ -228,6 +227,14 @@ class Entry extends DataAbstract
 
         // Add this field to the fieldlist, if not already set.
         if (!in_array($name, $this->_fieldlist)) $this->_fieldlist[] = $name;
+    }
+
+    // Update the values of multiple fields.
+    // Supply a key=>value array.
+
+    public function updateFields($fields)
+    {
+        return $this->setFields($fields, false);
     }
 
     // Get the fields and values (an array).

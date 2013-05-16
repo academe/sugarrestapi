@@ -7,9 +7,9 @@
  * the module name, which these data objects all need to function.
  */
 
-namespace Academe\SugarRestApi;
+namespace Academe\SugarRestApi\Model;
 
-interface DataInterface
+interface ModelInterface
 {
     public function setApi(\Academe\SugarRestApi\Api\ApiAbstract $api);
     public function setModule($module);
