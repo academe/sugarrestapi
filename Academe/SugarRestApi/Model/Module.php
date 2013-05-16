@@ -45,9 +45,6 @@ class Module extends ModelAbstract
         // Get the module fields from the CRM.
         $data = $this->api->getModuleFields($this->module);
 
-        //$this->api->nameValuesToKeyValues($data);
-        echo "<pre>"; var_dump($data); die(); echo "</pre>";
-
         // If the fetch has worked, we will have an array of fields and links.
         if (is_array($data)) {
             if (isset($data['module_fields'])) {
