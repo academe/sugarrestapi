@@ -9,11 +9,11 @@
  * @todo Some handy ways to handle timestamps.
  */
 
-namespace Academe\SugarRestApi;
+namespace Academe\SugarRestApi\Model;
 
-use Academe\SugarRestApi\ApiInterface\Model as ApiInterface;
+use Academe\SugarRestApi\ApiInterface as ApiInterface;
 
-class Entry extends DataAbstract
+class Entry extends ModelAbstract
 {
     // The name of the module, e.g. "Contacts", "Accounts"..
     //protected $module = NULL;

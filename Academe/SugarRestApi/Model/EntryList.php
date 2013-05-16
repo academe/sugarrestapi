@@ -9,7 +9,7 @@
 
 namespace Academe\SugarRestApi\Model;
 
-class EntryList extends DataAbstract implements \Countable, \Iterator
+class EntryList extends ModelAbstract implements \Countable, \Iterator
 {
     // The query we are running.
     public $query = null;
