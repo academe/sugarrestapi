@@ -55,7 +55,7 @@ class Module extends DataAbstract
                 foreach($this->module_fields as $field_name => $field_detail) {
                     if (!empty($field_detail['options']) && is_array($field_detail['options'])) {
                         $this->module_fields[$field_name]['options'] =
-                            $this->api->nameValueListToKeyValueArray($field_detail['options']);
+                            $field_detail['options'];
                     }
                 }
             }
