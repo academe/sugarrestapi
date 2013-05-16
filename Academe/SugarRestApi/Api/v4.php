@@ -67,6 +67,11 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     }
 
     // Get a list of fields for a module.
+    // These are the basic fields and the link fields.
+    // The drop-down fields include a full list of options.
+    // The "required" flag is included, but not much else with respect
+    // to validation (no field lengths, for example).
+
     public function getModuleFields($moduleName, $fieldList = array())
     {
         $parameters = array(
@@ -78,7 +83,8 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         return $this->apiPost('get_module_fields', $parameters);
     }
 
-    // Get the current user ID, given the session.
+    // Get the current CRM user ID, given the session.
+
     public function getUserId()
     {
         $parameters = array(
@@ -98,11 +104,12 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     // A supplied ID that does not mnatch a Sugarbean that the user can access, will return with
     // a "warning" name/value pair explaining why.
     // TODO: this warning should perhaps be detected and put into the error log, or the record should
-    // simply by discarded.
+    // simply be discarded.
+    // Defaults to all fields if none supplied.
 
     public function getEntries(
         $moduleName,
-        $ids = array(),
+        $ids,
         $selectFields = array(),
         $linkNameFields = array()
     )
@@ -110,44 +117,19 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         $parameters = array(
             'session' => $this->getSessionId(),
             'module_name' => $moduleName,
-            'ids' => $ids,
-            'select_fields' => $selectFields,
+            'ids' => (is_string($ids) ? explode(',', $ids) : $ids),
+            'select_fields' => (is_string($selectFields) ? explode(',', $selectFields) : $selectFields),
             'link_name_to_fields_array' => $this->arrayToNameValues($linkNameFields),
         );
 
         return $this->apiPost('get_entries', $parameters);
     }
 
-    // Convert a simple array of relationships and fieldsw into a name/value array
-    // required by the SugarCRM API.
-    public function arrayToNameValues($array)
-    {
-        // The link name fields is a nasty structure, so we will accept something simpler
-        // here.
-        // The link list we accept is a an array of arrays:
-        //  array('link-name' => array('field1', 'field2', ...), ...)
-        // The link-name is the name of the relationship, as seen in Studio. The fields
-        // are the list of fields in the linked table that you want to retrieve.
-        // As far as I know, there is no way to return all the fields - they have to be named.
-
-        $nameValues = array();
-
-        if (!empty($array) && is_array($array)) {
-            foreach($array as $linkName => $linkFields) {
-                if (is_array($linkFields)) {
-                    if (empty($linkFields)) $linkFields = array('id');
-
-                    // This is the format SugarCRM expects it, as 'name/value' pairs.
-                    $nameValues[] = array('name' => $linkName, 'value' => $linkFields);
-                }
-            }
-        }
-
-        return $nameValues;
-    }
-
     // Retrieve a list of beans.
     // This is the primary method for getting list of SugarBeans from Sugar.
+    // The query parameter is a fragment of WHERE-clause, so to use it you need
+    // intimate knowledge of what the query is that SugarCRM will construct. It's
+    // pretty crap really, for an API.
 
     public function getEntryList(
         $moduleName,
@@ -181,13 +163,23 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     // Retrieve the layout metadata for a given modules given a specific types and views.
     // Types include: default, wireless
     // Views include: edit, detail, list, subpanel
-    public function getModuleLayout($moduleNames, $types = array('default'), $views = array('detail'), $aclCheck = true, $md5 = false)
+    // Each parameter can be passed as an array of values, or a single value string, or a
+    // CSV string (with no spaces).
+    // The "a_" prefeix means "this is an array".
+
+    public function getModuleLayout(
+        $moduleNames,
+        $types = 'default',
+        $views = 'detail',
+        $aclCheck = true,
+        $md5 = false
+    )
     {
         $parameters = array(
             'session' => $this->getSessionId(),
-            'a_module_names' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
-            'a_type' => (is_string($types) ? array($types) : $types),
-            'a_view' => (is_string($views) ? array($views) : $views),
+            'a_module_names' => (is_string($moduleNames) ? explode(',', $moduleNames) : $moduleNames),
+            'a_type' => (is_string($types) ? explode(',', $types) : $types),
+            'a_view' => (is_string($views) ? explode(',', $views) : $views),
             'acl_check' => $aclCheck,
             'md5' => $md5
         );
@@ -198,7 +190,17 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     // Search modules.
     // At least one module must be supplied.
     // Supported modules are Accounts, Bug Tracker, Cases, Contacts, Leads, Opportunities, Project, ProjectTask, Quotes.
-    public function searchByModule($searchString, $moduleNames, $offset = 0, $limit = NULL, $assignedUserId = NULL, $fields = array(), $unifiedSearchOnly = true, $favourites = false)
+
+    public function searchByModule(
+        $searchString,
+        $moduleNames,
+        $offset = 0,
+        $limit = NULL,
+        $assignedUserId = NULL,
+        $fields = array(),
+        $unifiedSearchOnly = true,
+        $favourites = false
+    )
     {
         $parameters = array(
             'session' => $this->getSessionId(),
@@ -287,6 +289,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     }
 
     // Retrieve the md5 hash of the vardef entries for a particular module.
+
     public function getModuleFieldsMd5($moduleName)
     {
         $parameters = array(
@@ -299,14 +302,22 @@ class v4 extends \Academe\SugarRestApi\Api\Api
 
     // Retrieve the md5 hash of a layout metadata for a given module given a specific type and view.
     // Types include: default, wireless
-    // Views include: edit, detail, list, subpanel
-    public function getModuleLayoutMd5($moduleNames, $types = array('default'), $views = array('detail'), $aclCheck = true)
+    // Views include: edit, detail, list, subpanel.
+    // Unlike API get_module_layout, the parameters are not prefixed "a_", but these are still
+    // arrays.
+
+    public function getModuleLayoutMd5(
+        $moduleNames,
+        $types = 'default',
+        $views = 'detail',
+        $aclCheck = true
+    )
     {
         $parameters = array(
             'session' => $this->getSessionId(),
-            'module_name' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
-            'type' => (is_string($types) ? array($types) : $types),
-            'view' => (is_string($views) ? array($views) : $views),
+            'module_name' => (is_string($moduleNames) ? explode(',', $moduleNames) : $moduleNames),
+            'type' => (is_string($types) ? explode(',', $types) : $types),
+            'view' => (is_string($views) ? explode(',', $views) : $views),
             'acl_check' => $aclCheck,
         );
 
@@ -314,6 +325,9 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     }
 
     // Update or create a single SugarBean.
+    // The data needs to be passed in as name/value list, so pass a key/value array
+    // through $api->arrayToNameValues() before passing it in here.
+
     public function setEntry($moduleName, $data, $trackView = false)
     {
         $parameters = array(
@@ -328,6 +342,10 @@ class v4 extends \Academe\SugarRestApi\Api\Api
 
     // Retrieve the list of available modules on the system available to the currently logged in user.
     // filter is all, default or mobile
+    // For each module we get the key, the label and an ACL. The ACL is an array of arrays, each
+    // leaf node being an action/access pair (e.g. edit/true, delete/false). These would be more
+    // useful converted to key/value arrays.
+
     public function getAvailableModules($filter = 'all', $moduleNames = array())
     {
         $parameters = array(
@@ -339,13 +357,20 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         return $this->apiPost('get_available_modules', $parameters);
     }
 
-    // ???
-    // @todo check if the MD5 parameter should be upper case.
-    public function getLanguageDefinition($moduleNames = array(), $md5 = false)
+    // Get labels and text in the current module for the given module(s).
+    // If md5 is true, then only the md5 of the translations will be returned.
+    // The md5 parameter really should not be here; the md5 should really be a 
+    // completely separate API function, like it is for getModuleLayout vs
+    // getModuleLayoutMd5 (although getModuleLayout does have a legacy md5 parameter).
+
+    public function getLanguageDefinition(
+        $moduleNames,
+        $md5 = false
+    )
     {
         $parameters = array(
             'session' => $this->getSessionId(),
-            'modules' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
+            'modules' => (is_string($moduleNames) ? explode(',', $moduleNames) : $moduleNames),
             'MD5' => $md5,
         );
 
@@ -353,6 +378,11 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     }
 
     // Get server information.
+    // Only returns flavor (e.g. "CE"), version (e.g. "6.5.11") and gmt_time (e.g. "2013-05-15 13:16:55")
+    // It does not provide the database engine and version, which would have been
+    // really useful when constructing query conditions (e.g. to know how to escape a quote (') in a 
+    // string).
+
     public function getServerInfo()
     {
         return $this->apiPost('get_server_info');
@@ -361,17 +391,25 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     // Retrieve a list of recently viewed records by a module.
     // Documentation on this one is not clear. Multiple modules can be supplied, but
     // the returned results will vary depending on the order of the modules in the array.
-    public function getLastViewed($moduleNames = array())
+    // A single array is returned, each element being a small array identifying the module,
+    // name, entry id and date mofdified.
+    // A usecase for this would be as a part of a dashboard page.
+
+    public function getLastViewed(
+        $moduleNames
+    )
     {
         $parameters = array(
             'session' => $this->getSessionId(),
-            'module_names' => (is_string($moduleNames) ? array($moduleNames) : $moduleNames),
+            'module_names' => (is_string($moduleNames) ? explode(',', $moduleNames) : $moduleNames),
         );
 
         return $this->apiPost('get_last_viewed', $parameters);
     }
 
-    // Retrieve a list of upcoming activities including Calls, Meetings,Tasks and Opportunities.
+    // Retrieve a list of upcoming activities including Calls, Meetings, Tasks and Opportunities.
+    // A usecase for this would be as a part of a dashboard page.
+
     public function getUpcomingActivities()
     {
         $parameters = array(
@@ -383,15 +421,33 @@ class v4 extends \Academe\SugarRestApi\Api\Api
 
     // Retrieve a collection of beans that are related to the specified bean and optionally return
     // relationship data for those related beans.
+    // Note API v4_1 extends this function.
+    //
+    // @param $linkFieldName string A single linkfield name, as identified in get_module_fields
+    // @param $relatedFields array The names of the fields you want to return from the linked entries.
+    // @param $relatedModuleLinkNameFields array A list of relationships to follow on the selected entries, and the fields to return for those entries.
+    //
+    // Returns an array of two elements: 'entry_list' and 'relationship_list'. Each of those
+    // elements are numerically indexed, and match 1:1 (e.g. element 3 of the entry_list has a
+    // corresponding element 3 of the relationship_list).
+    //
+    // Requesting for module "Contacts", contact ID "123", linked field "accounts" should return
+    // in the entry_list, the [single] Account that the contact is linked to. The related fields
+    // can be supplied to include any of the fields in those accounts.
+    // The related module link name fields should take the references one more step beyond
+    // that into a third layer of [multiple] related modules. This are specified as an array of these:
+    // 'link-field-name' => array('field1', 'field2', ...)
+
     public function getRelationships(
         $moduleName,
         $beanId,
         $linkFieldName,
-        $relatedModuleQuery,
-        $relatedFields,
-        $relatedModuleLinkNameFields,
+        $relatedModuleQuery = '',
+        $relatedFields = array('id', 'name'),
+        $relatedModuleLinkNameFields = array(),
         $deleted = false,
-        $orderBy = ''
+        $orderBy = '',
+        $limit = false
     )
     {
         $parameters = array(
@@ -401,9 +457,10 @@ class v4 extends \Academe\SugarRestApi\Api\Api
             'link_field_name' => $linkFieldName,
             'related_module_query' => $relatedModuleQuery,
             'related_fields' => $relatedFields,
-            'related_module_link_name_to_fields_array' => $relatedModuleLinkNameFields,
+            'related_module_link_name_to_fields_array' => $this->arrayToNameValues($relatedModuleLinkNameFields),
             'deleted' => $deleted,
             'order_by' => $orderBy,
+            'limit' => $limit,
         );
 
         return $this->apiPost('get_relationships', $parameters);
@@ -442,19 +499,22 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         return $this->apiPost('set_relationships', $parameters);
     }
 
-    // Update or create a list of SugarBeans
+    // Update or create a list of SugarBeans.
+
     public function updateEntries($moduleName, $data)
     {
         $parameters = array(
             'session' => $this->getSessionId(),
             'module_name' => $moduleName,
-            'name_value_lists' => $data,
+            'name_value_lists' => $this->arrayToNameValues($data),
         );
 
         return $this->apiPost('update_entries', $parameters);
     }
 
     // Perform a seamless login. This is used internally during the sync process.
+    // This sounnds interesting. No idea what it is, what with there being no documentation.
+
     public function seamlessLogin()
     {
         return $this->apiPost('seamless_login');
@@ -468,7 +528,18 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     // would cut down on the memory needed to encode the file. We are kind of stuck with this
     // in-memory manipulation of the file content, because that is what the API transport
     // requires (so far as I know).
-    public function setNoteAttachment($id_or_note, $filename = '', $file = '', $moduleId = '', $moduleName = '')
+    //
+    // TODO: it should in theory be possible to stream a file diectly from disk to the 
+    // REST service, avoiding the need to hold it all in memory. A look at Guzzle may offer
+    // some clues on how this can be done.
+
+    public function setNoteAttachment(
+        $id_or_note,
+        $filename = '',
+        $file = '',
+        $moduleId = '',
+        $moduleName = ''
+    )
     {
         if (is_array($id_or_note)) {
             $note = $id_or_note;
@@ -491,6 +562,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     }
 
     // Retrieve an attachment from a note.
+
     public function getNoteAttachment($id)
     {
         $parameters = array(
@@ -510,7 +582,8 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     }
 
     // Sets a new revision for this document.
-    // The file content needs to be base64_encoded
+    // The file content needs to be base64_encoded.
+
     public function setDocumentRevision($id_or_revision, $documentName = '', $revision = '', $filename = '', $fileContent = '')
     {
         if (is_array($id_or_revision)) {
@@ -540,6 +613,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
     // It is not clear where we get the document revision ID from, or whether this just
     // applies to the Documents module, or extended to any module that supports the
     // uploaded of documents.
+
     public function getDocumentRevision($id)
     {
         $parameters = array(
@@ -552,6 +626,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
 
     // Once we have successfuly done a mail merge on a campaign, we need to notify
     // Sugar of the targets and the campaign_id for tracking purposes.
+
     public function setCampaignMerge($targets, $campaignId)
     {
         $parameters = array(
@@ -573,39 +648,5 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         );
 
         return $this->apiPost('get_entries_count', $parameters);
-    }
-
-    // Return a new entry object.
-
-    public function newEntry($module)
-    {
-        $Entry = new $this->entry_classname();
-
-        // Give it access to this API.
-        $Entry->setApi($this);
-
-        // Set the module if not already set.
-        $Entry->setModule($module);
-
-        return $Entry;
-    }
-
-    // Return a new entry list object.
-
-    public function newEntryList($module_name)
-    {
-        // Create the new EntryList object.
-        $EntryList = new $this->entrylist_classname();
-
-        // Tell the object the name of the Entry class to use.
-        $EntryList->entry_classname = $this->entry_classname;
-
-        // Give it access to this API.
-        $EntryList->setApi($this);
-
-        // Set the module if not already set.
-        $EntryList->setModule($module_name);
-
-        return $EntryList;
     }
 }

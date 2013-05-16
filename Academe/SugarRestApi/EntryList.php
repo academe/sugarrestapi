@@ -11,7 +11,7 @@ namespace Academe\SugarRestApi;
 
 //use Academe\SugarRestApi\Api as Api;
 
-class EntryList implements \Countable, \Iterator
+class EntryList extends DataAbstract implements \Countable, \Iterator
 {
     // The query we are running.
     public $query = null;
@@ -40,9 +40,6 @@ class EntryList implements \Countable, \Iterator
 
     // The 'link name fields' - an array of arrays of field names.
     public $link_name_fields = array();
-
-    // The class for a single Entry.
-    public $entry_classname = '\\Academe\\SugarRestApi\\Entry';
 
     // Keeping track of a resultset.
     // The number of Entries in the last fetch.
@@ -128,14 +125,14 @@ class EntryList implements \Countable, \Iterator
 
     // Allow the entry list to be populated with data that has already been selected.
 
-    public function __construct($entry_list = array(), $api = null)
+    public function __construct($api = null, $entry_list = array())
     {
-        if (!empty($entry_list)) {
-            $this->parseEntryList($entry_list);
-        }
-
         if (!empty($api)) {
             $this->setApi($api);
+        }
+
+        if (!empty($entry_list)) {
+            $this->parseEntryList($entry_list);
         }
     }
 
@@ -188,16 +185,6 @@ class EntryList implements \Countable, \Iterator
         return $this->hard_limit;
     }
 
-    // Set the module for this generic entry object.
-    // The module can only be set once and not changed.
-    public function setModule($module)
-    {
-        // You cannot change the module once it has been set.
-        if (!isset($this->module)) $this->module = $module;
-
-        return $this;
-    }
-
     // Return the cound of Entries that match the current query.
     // Will only be populated after the first fetchPage()
 
@@ -245,13 +232,6 @@ class EntryList implements \Countable, \Iterator
     public function fetchIsComplete()
     {
         return $this->list_complete;
-    }
-
-    // Set the API reference.
-    // CHECKME: can we use "Api\ApiAbstract" alone as a hint?
-    public function setApi(\Academe\SugarRestApi\Api\ApiAbstract $api)
-    {
-        $this->api = $api;
     }
 
     // Set the fields we will be dealing with.
@@ -412,7 +392,7 @@ class EntryList implements \Countable, \Iterator
             $entry_count = 0;
 
             foreach ($entry_list['entry_list'] as $entry) {
-                $Entry = new $this->entry_classname($entry, $this->api);
+                $Entry = new $this->api->entry_classname($this->api, $entry);
                 $Entry->setModule($this->module);
 
                 // If there is relationshnip data for this entry, then add it to the object.
@@ -429,7 +409,7 @@ class EntryList implements \Countable, \Iterator
             // Not API data - just arrays of entry arrays.
             foreach($entry_list as $entry_fields) {
                 // Create a new Entry with this data.
-                $entry = new $this->entry_classname($entry_fields, $this->api);
+                $entry = new $this->api->entry_classname($this->api, $entry_fields);
 
                 // Store it in the list.
                 $this->entry_list[$entry->id] = $entry;

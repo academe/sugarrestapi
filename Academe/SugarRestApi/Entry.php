@@ -13,19 +13,19 @@ namespace Academe\SugarRestApi;
 
 use Academe\SugarRestApi\ApiInterface as ApiInterface;
 
-class Entry
+class Entry extends DataAbstract
 {
     // The name of the module, e.g. "Contacts", "Accounts"..
-    public $_module = NULL;
+    //protected $module = NULL;
 
     // The API object.
     // This object is referenced from an API shared by all items.
-    public $_api;
+    //protected $api;
 
     // The unique ID for this entity item.
     // This will be set if the entity is retrieved from the database, or is new and
     // has just been saved.
-    public $_id;
+    //protected $id;
 
     // The key=>value data for this entity.
     // This may not be all fields for the entity. That depends on what we
@@ -51,7 +51,7 @@ class Entry
     public $_relationships = array();
 
     // The EntryList class, used to put related Entries in.
-    public $entry_list_class_name = '\\Academe\\SugarRestApi\\EntryList';
+    //public $entry_list_class_name = '\\Academe\\SugarRestApi\\EntryList';
 
     // true if the Entry exists in the CRM.
     // Note: not yet fully implemented.
@@ -70,7 +70,7 @@ class Entry
                 list($name, $alias) = explode(':', $key, 2);
                 $link_name_fields[$name] = $value;
                 unset($link_name_fields[$key]);
-                $this->_api->relationship_aliases[$name] = $alias;
+                $this->api->relationship_aliases[$name] = $alias;
             }
         }
 
@@ -91,8 +91,8 @@ class Entry
         foreach($relationships as $alias => $relationship) {
             // The alias is the relationship name alias (which may be the relationship name
             // if no alias was provided).
-            // FIXME: where do we get this class name from?
-            $entry_list = new $this->entry_list_class_name($relationship, $this->api);
+
+            $entry_list = new $this->api->entrylist_classname($this->api, $relationship);
             $this->_relationships[$alias] = $entry_list;
         }
         //$this->_relationships = $relationships;
@@ -146,23 +146,6 @@ class Entry
         }
     }
 
-
-    // Convert a name_value_list to a key/value array.
-    // At may be worth moving this to the SugarRestApi API class.
-
-    public function nameValueListToArray($nameValueList)
-    {
-        $array = array();
-
-        foreach($nameValueList as $field) {
-            if (isset($field['name']) && isset($field['value'])) {
-                $array[$field['name']] = $field['value'];
-            }
-        }
-
-        return $array;
-    }
-
     // Set the object to an entry fetched from the CRM.
     // This will overwrite everything, even an unsaved dirty record.
     // TODO: deprecate and change to fill().
@@ -176,7 +159,7 @@ class Entry
         if (empty($entry) || !is_array($entry)) return;
 
         // If the module has already been set, then the entry data must be for the same module.
-        if (!empty($this->_module) && !empty($entry['module_name']) && $this->_module != $entry['module_name']) {
+        if (!empty($this->module) && !empty($entry['module_name']) && $this->module != $entry['module_name']) {
             // TODO: raise an error.
             return;
         }
@@ -185,22 +168,29 @@ class Entry
         // If we are turning a relationship dataset into an Entry List then we will not
         // know the project in that relationship, at least not without further lookups into
         // the CRM structure.
-        if (!isset($this->_module) && isset($entry['module_name'])) {
-            $this->_module = $entry['module_name'];
+        if (!isset($this->module) && isset($entry['module_name'])) {
+            $this->module = $entry['module_name'];
         }
 
         // Copy the ID to the ID property.
-        $this->_id = (isset($entry['id']) ? $entry['id'] : null);
+        $this->id = (isset($entry['id']) ? $entry['id'] : null);
 
         // Copy the data - either key/value array or array of name/value pair arrays.
         // Some APIs return an entry in a name_value_list and other APIs in an entry_list
         // element. We need to be able to handle these inconsistencies.
+        //
+        // FIXME: we can probably just pass entry through $api->nameValuesToKeyValues() and
+        // remove all the name/value lists in one swoop.
+        //
+
+        //$this->api->nameValuesToKeyValues($entry);
+
         if (isset($entry['key_value_list'])) {
             $this->_fields = $entry['key_value_list'];
         } elseif (isset($entry['name_value_list'])) {
-            $this->_fields = $this->nameValueListToArray($entry['name_value_list']);
+            $this->_fields = $entry['name_value_list'];
         } elseif (isset($entry['entry_list'])) {
-            $this->_fields = $this->nameValueListToArray($entry['entry_list']);
+            $this->_fields = $entry['entry_list'];
         } else {
             // Final fall-back - we have a key/value set of data.
             $this->_fields = $entry;
@@ -211,15 +201,6 @@ class Entry
         // data from some other source?
         $this->_dirty = false;
 
-        return $this;
-    }
-
-    // Set the API reference.
-    // CHECKME: is this reference pulled in correctly?
-
-    public function setApi(\Academe\SugarRestApi\Api\ApiAbstract $api)
-    {
-        $this->_api =& $api;
         return $this;
     }
 
@@ -256,6 +237,7 @@ class Entry
     {
         return $this->getAsArray();
     }
+
     public function getAsArray()
     {
         // Add in any relationship data if there is any.
@@ -276,14 +258,15 @@ class Entry
     // or a "key_value_list" single array. The former will be converted
     // to the latter automatically.
     // Now: pass in the "entry" array from the API.
-    public function __construct($entry = array(), $api = NULL)
-    {
-        if (!empty($entry) && is_array($entry)) {
-            $this->setEntry($entry);
-        }
 
+    public function __construct($api = NULL, $entry = null)
+    {
         if (isset($api)) {
             $this->setApi($api);
+        }
+
+        if (isset($entry)) {
+            $this->setEntry($entry);
         }
     }
 
@@ -332,19 +315,19 @@ class Entry
         if (!$this->_dirty) return false;
 
         // TODO: Raise an error if we don't have a reference to the API object.
-        if (!is_object($this->_api)) return false;
+        if (!is_object($this->api)) return false;
 
         // TODO: raise an error if we haven't been told what module this is for.
-        if (empty($this->_module)) return;
+        if (empty($this->module)) return;
 
         // TODO: find out what to do with this.
         $trackView = false;
 
-        // Do the save.
-        $entry = $this->_api->setEntry($this->_module, $this->_fields, $trackView);
+        // Do the save to the CRM.
+        $entry = $this->api->setEntry($this->module, $this->_fields, $trackView);
 
         // Save the updated fields in the object and mark as not dirty.
-        if ($this->_api->isSuccess()) {
+        if ($this->api->isSuccess()) {
             // We get back the saved fields that we sent, along with any validation that
             // may have been applied to them.
             $this->setEntry($entry);
@@ -352,15 +335,7 @@ class Entry
             $this->_exists = true;
         }
 
-        return $this->_api->isSuccess();
-    }
-
-    // Set the module for this generic entry object.
-    // The module can only be set once and not changed.
-    public function setModule($module)
-    {
-        if (!isset($this->_module)) $this->_module = $module;
-        return $this;
+        return $this->api->isSuccess();
     }
 
     // Fetch an entry from the CRM by ID.
@@ -369,14 +344,14 @@ class Entry
     public function fetchEntry($id)
     {
         // TODO: Raise an exception if we don't have a reference to the API object.
-        if (!is_object($this->_api)) return false;
+        if (!is_object($this->api)) return false;
 
         // TODO: find out what to do with this.
         $trackView = false;
 
         // Fetch the entry.
-        $entry = $this->_api->getEntry(
-            $this->_module,
+        $entry = $this->api->getEntry(
+            $this->module,
             $id,
             $this->_fieldlist,
             $this->link_name_fields,
@@ -386,9 +361,9 @@ class Entry
         // Also get the relationships at this point, parse
         // them to a nicer structure, then add them using setRelationshipData()
 
-        if ($this->_api->isSuccess() && !empty($entry['entry_list'])) {
+        if ($this->api->isSuccess() && !empty($entry['entry_list'])) {
             // Parse any relationship data that has been returned.
-            $linked_data = $this->_api->parseRelationshipList($entry);
+            $linked_data = $this->api->parseRelationshipList($entry);
 
             if (!empty($linked_data[0])) {
                 $this->setRelationshipFields($linked_data[0]);

@@ -24,10 +24,14 @@ class Api extends ApiAbstract
     public $transport_class_name = '\\Academe\\SugarRestApi\\Transport\\ControllerGuzzle';
 
     // Class names for various CRM objects and collections.
+    // TODO: namespace these classes by the API version and physically move them.
     public $entrylist_classname = '\\Academe\\SugarRestApi\\EntryList';
     public $entry_classname = '\\Academe\\SugarRestApi\\Entry';
+    public $module_classname = '\\Academe\\SugarRestApi\\Module';
 
-    // Data that constructs the web service entry point URL.
+    // Details that constructs the web service entry point URL.
+    // 'url' is the final URL, constructed from 'template' with any of the remaining
+    // field values substituted into it.
 
     public $transport_url_parts = array(
         'protocol' => 'http',
@@ -420,11 +424,14 @@ class Api extends ApiAbstract
         $payload = $this->callRest($postData, 'POST');
 
         // TODO: Here we check that the call succeeded, and raise exceptions as needed.
+
         $result = $this->parsePayload($payload);
 
-        // Find any name/value lists and transform them into key/value lists for convenience.
-        // Note: we will not do this here any more. The entry object can transform as required.
-        //$this->transformNameValueLists($result);
+        // Transform all name/value pair nodes in the data structure to key=>value elements.
+        // Do them all, no matter where they are. From this point on, we do not have to 
+        // worry about name/value pairs stuffed away in the returned data.
+
+        $this->nameValuesToKeyValues($result);
 
         return $result;
     }
@@ -445,6 +452,8 @@ class Api extends ApiAbstract
     }
 
     // Parse the returned transport request data.
+    // This is just a first stage, to check if valid data or an error were returned.
+    // Making sense of the data is left to higher-level objects such as Entry and EntryList.
     // If there are errors in itm, then mark that. Recognising errors is a bit strange
     // with SugarCRM, and so may change with future API versions, so be aware of this.
 
@@ -508,34 +517,84 @@ class Api extends ApiAbstract
         }
     }
 
-    // Search the result for name_value_list elements and expand it into
-    // key/value pairs in the element key_value_list.
+    // Convert a name_value_list to a key/value array.
+    // Maybe "Array" is a misnomer - KeyValue would be a better description.
+    // Note: no longer used. Instead nameValuesToKeyValues() is applied to the full
+    // data structure returned from the CRM at an early stage.
+    // Kept around as a utility function.
 
-    public function transformNameValueLists(&$data)
+    public function nameValueListToArray($nameValueList)
     {
-        if (!is_array($data)) return;
+        $array = array();
 
-        // Start walking the array.
-        array_walk($data, array(&$this, 'transformNameValueListsCallback'));
-    }
-
-    private function transformNameValueListsCallback(&$value, $key)
-    {
-        // Only look at arrays - we don't care about leaf nodes.
-        if (is_array($value)) {
-            // If the array contains a name_value_list element, then add a key_value_list element after it.
-            // Do not walk any further elements in that array. CHECKME: do we need to go any deeper?
-            if (isset($value['name_value_list'])) {
-                $value['key_value_list'] = array();
-                foreach($value['name_value_list'] as $v) {
-                    if (isset($v['name']) && isset($v['value'])) $value['key_value_list'][$v['name']] = $v['value'];
-                }
-            } else {
-                // The array element does not have a name_value_list element, so we will
-                // walk it to see if there are any at a deeper level.
-                array_walk($value, array(&$this, 'transformNameValueListsCallback'));
+        foreach($nameValueList as $field) {
+            if (isset($field['name']) && isset($field['value'])) {
+                $array[$field['name']] = $field['value'];
             }
         }
+
+        return $array;
+    }
+
+    // Recursively go through a structured array returned from the CRM, and replace all 
+    // name/value pairs with key=>value elements.
+    // Look for fragments like this:
+    //    '{id}' => array('name' => '{id}', 'value' => {value})
+    // and replace them with this:
+    //    '{id}' => {value}
+    // Note {value} can be any data type. Do not - for now - recurse into values that happen 
+    // to be arrays.
+    // The array is modified in-situ by reference.
+
+    public function nameValuesToKeyValues(& $array)
+    {
+        // Start the walk.
+        array_walk($array, array(&$this, 'nameValuesToKeyValuesCallback'));
+
+        // Return the processed array at the end.
+        return $array;
+    }
+
+    protected function nameValuesToKeyValuesCallback(&$value, $key)
+    {
+        // Only interested in arrays.
+        if (is_array($value)) {
+            // Is this a name/value node?
+            if (
+                count($value) == 2
+                && isset($value['name'])
+                && is_string($value['name'])
+                && isset($value['value']) // Will this miss NULL values?
+                && $key == $value['name']
+            ) {
+                // This is a name/value node, so reduce it by stripping out an array level.
+                // The value may happen to be an aray, but don't recurse into it. We may need
+                // to revisit that at a later date.
+                $value = $value['value'];
+            } else {
+                // Not a name/value node - walk deeper.
+                // TODO: for efficiency, only do this if $value contains elements that are also arrays.
+                array_walk($value, array(&$this, 'nameValuesToKeyValuesCallback'));
+            }
+        }
+    }
+
+    // Convert a simple array of key=>value items into a name/value array
+    // required by many of the SugarCRM API functions.
+    // CHECKME: this seems to be mixing up several different things - name/value and ids?
+
+    public function arrayToNameValues($array)
+    {
+        $nameValues = array();
+
+        if (!empty($array) && is_array($array)) {
+            foreach($array as $key => $value) {
+                // This is the format SugarCRM expects it, as 'name/value' pairs.
+                $nameValues[$key] = array('name' => $key, 'value' => $value);
+            }
+        }
+
+        return $nameValues;
     }
 
     // Parse a relationship list returned from the API in an entry list to something 
@@ -558,8 +617,7 @@ class Api extends ApiAbstract
                                     // pair format. We know which source entity it belongs to, we have
                                     // the relationship name, and we have field values at the end of that
                                     // relationship.
-                                    // Convert it to a key=>value array.
-                                    $record_data = $this->nameValueListToArray($record['link_value']);
+                                    $record_data = $record['link_value'];
 
                                     // Now put the record into the relationship structure, without all
                                     // the wrapper cruft of the source structure.
@@ -588,8 +646,7 @@ class Api extends ApiAbstract
                                 // pair format. We know which source entity it belongs to, we have
                                 // the relationship name, and we have field values at the end of that
                                 // relationship.
-                                // Convert it to a key=>value array.
-                                $record_data = $this->nameValueListToArray($record);
+                                $record_data = $record;
 
                                 // Now put the record into the relationship structure, without all
                                 // the wrapper cruft of the source structure.
@@ -610,20 +667,55 @@ class Api extends ApiAbstract
         return $linked_data;
     }
 
-    // Convert a name_value_list to a key/value array.
-    // At may be worth moving this to the SugarRestApi API class.
+    // Return a new entry object.
 
-    public function nameValueListToArray($nameValueList)
+    public function newEntry($module)
     {
-        $array = array();
+        $extra_args = func_get_args();
+        array_shift($extra_args);
 
-        foreach($nameValueList as $field) {
-            if (isset($field['name']) && isset($field['value'])) {
-                $array[$field['name']] = $field['value'];
-            }
-        }
-
-        return $array;
+        return $this->newObject($module, $this->entry_classname);
     }
 
+    // Return a new entry list object.
+
+    public function newEntryList($module)
+    {
+        $extra_args = func_get_args();
+        array_shift($extra_args);
+
+        return $this->newObject($module, $this->entrylist_classname);
+    }
+
+    // Return a new module object.
+
+    public function newModule($module)
+    {
+        $extra_args = func_get_args();
+        array_shift($extra_args);
+
+        return $this->newObject($module, $this->module_classname, $extra_args);
+    }
+
+    // Create a generic object.
+    // constructor_args is an array of arguments that are passed into the constructor
+    // of the class as separate argumens.
+
+    protected function newObject($module, $class_name, $constructor_args = array())
+    {
+        // Create the object with an optional variable number of parameters using clever
+        // reflection.
+
+        $reflection = new \ReflectionClass($class_name);
+        $object = $reflection->newInstanceArgs($constructor_args);
+
+        // Give it access to this API.
+        $object->setApi($this);
+
+        // Set the module.
+        $object->setModule($module);
+
+        return $object;
+    }
 }
+
