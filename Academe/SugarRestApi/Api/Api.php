@@ -667,6 +667,26 @@ class Api extends ApiAbstract
         return $linked_data;
     }
 
+    // Convert a multi-select value to an array.
+    // The value is a string in the form: ^item1^,^item2^,^...^
+
+    public function multiSelectValueToArray($value)
+    {
+        // The string should start and end with a carrat.
+        if (
+            !is_string($value)
+            || strlen($value) < 2
+            || substr($value, 0, 1) != '^'
+            || substr($value, -1) != '^'
+        ) return $value;
+
+        // String the first and last characters off.
+        $value = substr($value, 1, -1);
+
+        // Explode into an array.
+        return explode('^,^', $value);
+    }
+
     // Return a new entry object.
 
     public function newEntry($module)
