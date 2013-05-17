@@ -687,6 +687,21 @@ class Api extends ApiAbstract
         return explode('^,^', $value);
     }
 
+    // Convert an array to a multi-select single-string value.
+
+    public function arrayToMultiSelectValue($value)
+    {
+        // If not set or an empty array, then return an empty string.
+        if (
+            !isset($value)
+            || !is_array($value)
+            || empty($value)
+        ) return '';
+
+        // Construct the string.
+        return '^' . implode('^,^', $value) . '^';
+    }
+
     // Return a new entry object.
 
     public function newEntry($module)
