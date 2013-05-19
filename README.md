@@ -22,9 +22,6 @@ Minimal use is now something like this:
     // Once logged in, you can get the session details as a string:
     $session_json = $v4_api->getSession();
     
-    // Or fetch a contact entry.
-    $contact = $v4_api->newEntry('Contacts')->fetchEntry('d9876655-fe36-f7dd-a085-510a7afc8e75');
-    
     // That can be saved in the user's browsing session, or on an application-wide basis, so that
     // the number of login sessions on sugar can be kept in check.
     // The next page would resuse that session like this:
@@ -38,6 +35,11 @@ Minimal use is now something like this:
     // used. If the session is no longer valid, then the user will be automatically logged into a new
     // session, so there is no additional action to perform.
 
+    // Fetch a contact entry. An "entry" in SugarCRM parlance is an entiry or table. It is actually
+    // a number of tables joined as a 1:1 relationship, but the API hides that from us.
+    
+    $contact = $v4_api->newEntry('Contacts')->fetchEntry('d9876655-fe36-f7dd-a085-510a7afc8e75');
+    
 A simple library, using the Guzzle REST library (others can be used if desired) to
 handle the API for SugarCRM.
 
