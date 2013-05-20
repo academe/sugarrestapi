@@ -142,7 +142,18 @@ class EntryList extends ModelAbstract implements \Countable, \Iterator
     public function setEntryList($entry_list) {
         if (empty($entry_list) || !is_array($entry_list)) return;
 
-        // xxx
+        // Set the entry data.
+        $this->parseEntryList($entry_list);
+
+        // Set this data set as complete so we don'y attempt to fetch more
+        // from the CRM.
+        $this->list_complete = true;
+
+        // Set the total count.
+        $this->total_count = count($this->entry_list);
+        $this->result_count = $this->total_count;
+
+        return $this;
     }
 
     // Return the first Entry on the EntryList.
@@ -343,8 +354,14 @@ class EntryList extends ModelAbstract implements \Countable, \Iterator
     }
 
     // Get a single entry or all entries as an array.
+    // Actually, this should be toArray()
 
     public function getAsArray($id = null)
+    {
+        return $this->toArray($id);
+    }
+
+    public function toArray($id = null)
     {
         $result = array();
 
@@ -385,23 +402,17 @@ class EntryList extends ModelAbstract implements \Countable, \Iterator
 
         // Take each entry returned from the API, and turn them into a separate entry class.
         if (!empty($entry_list['entry_list'])) {
-            // Keep a count of the entries, as it is the only way to match them up to 
-            // the relationship records.
-            $entry_count = 0;
-
-            foreach ($entry_list['entry_list'] as $entry) {
+            foreach ($entry_list['entry_list'] as $record_sequenec => $entry) {
                 $Entry = new $this->api->entry_classname($this->api, $entry);
                 $Entry->setModule($this->module);
 
                 // If there is relationshnip data for this entry, then add it to the object.
-                if (!empty($linked_data[$entry_count])) {
-                    $Entry->setRelationshipFields($linked_data[$entry_count]);
+                if (!empty($linked_data[$record_sequenec])) {
+                    $Entry->setRelationshipFields($linked_data[$record_sequenec]);
                 }
 
                 //$this->entry_list[$Entry->id] = $Entry;
                 $this->addEntry($Entry->id, $Entry);
-
-                $entry_count++;
             }
         } elseif (is_array($entry_list)) {
             // Not API data - just arrays of entry arrays.

@@ -463,11 +463,23 @@ class v4 extends \Academe\SugarRestApi\Api\Api
             'limit' => $limit,
         );
 
+        //var_dump($this->apiPost('get_relationships', $parameters));
         return $this->apiPost('get_relationships', $parameters);
     }
 
     // Set a single relationship between two beans. The items are related by module name and id.
-    public function setRelationship($moduleName, $beanId, $linkFieldName, $relatedIds, $data, $delete = 0)
+    // To remove the links instead of adding them, set $delete to 1.
+    // Relationship links are added and removed in a cumulative manner, i.e. only those
+    // relatedIds supplied will be touched.
+
+    public function setRelationship(
+        $moduleName,
+        $beanId,
+        $linkFieldName,
+        $relatedIds,
+        $data,
+        $delete = 0
+    )
     {
         $parameters = array(
             'session' => $this->getSessionId(),
@@ -484,7 +496,15 @@ class v4 extends \Academe\SugarRestApi\Api\Api
 
     // Set a single relationship between two beans. The items are related by module name and id.
     // @todo Description is wrong.
-    public function setRelationships($moduleNames, $beanIds, $linkFieldNames, $relatedIds, $data, $delete = array())
+
+    public function setRelationships(
+        $moduleNames,
+        $beanIds,
+        $linkFieldNames,
+        $relatedIds,
+        $data,
+        $delete = array()
+    )
     {
         $parameters = array(
             'session' => $this->getSessionId(),

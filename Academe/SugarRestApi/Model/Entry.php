@@ -108,6 +108,8 @@ class Entry extends ModelAbstract
     }
 
     // Get a single relationship as an array.
+    // TODO: name this relationshipToArray() for a little more consistency.
+    // Also similar renaming in EntryList would be good.
 
     public function getRelationshipAsArray($relationship_name = null)
     {
@@ -231,6 +233,7 @@ class Entry extends ModelAbstract
 
     // Update the values of multiple fields.
     // Supply a key=>value array.
+    // TODO: maybe change this to "fill()"?
 
     public function updateFields($fields)
     {
@@ -245,13 +248,21 @@ class Entry extends ModelAbstract
         return $this->getAsArray();
     }
 
+    // Get the Entry properties as an array.
+    // CHECKME: it would be great if we could catch get_object_vars() and feed it through
+    // this method, but I cannot see a way to do that yet.
+    // ** DEPRECATED ** use toArray() instead.
     public function getAsArray()
+    {
+        return $this->toArray();
+    }
+    public function toArray()
     {
         // Add in any relationship data if there is any.
         if (!empty($this->_relationships)) {
             return array_merge(
                 $this->_fields,
-                array('_relationships' => $this->getRelationshipFields())
+                array('_relationships' => $this->getRelationshipAsArray())
             );
         } else {
             return $this->_fields;

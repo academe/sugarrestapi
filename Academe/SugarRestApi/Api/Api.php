@@ -637,7 +637,10 @@ class Api extends ApiAbstract
                     // No 'link_list' in the wrapper wrapper here.
                     // The format of the linked list data varies depending on whether we are
                     // fetching for a single entry or multiple entries.
-                    $master_sequence = 0;
+                    // And it also varies according to which API function is called. Th lack of
+                    // documentation is infuriating.
+
+                    //$master_sequence = 0;
                     foreach($link_list_wrapper as $list_sequence => $list) {
                         if (!empty($list['records']) && is_array($list['records'])) {
                             $relationship_name = $list['name'];
@@ -656,7 +659,7 @@ class Api extends ApiAbstract
                                     ? $this->relationship_aliases[$relationship_name]
                                     : $relationship_name
                                 );
-                                $linked_data[$master_sequence][$alias][] = $record_data;
+                                $linked_data[$list_sequence][$alias][] = $record_data;
                             }
                         }
                     }
@@ -702,6 +705,9 @@ class Api extends ApiAbstract
         return '^' . implode('^,^', $value) . '^';
     }
 
+    // TODO: rather than newFoo(), perhaps we need makeFoo().
+    // We are making a model object, and not necessarily a new record at this point.
+
     // Return a new entry object.
 
     public function newEntry($module)
@@ -735,6 +741,9 @@ class Api extends ApiAbstract
     // Create a generic object.
     // constructor_args is an array of arguments that are passed into the constructor
     // of the class as separate argumens.
+    // TBH The constructor args are pretty useless ATM, as the first argument on all
+    // of the models is the API anyway. Perhaps here we can pass it in as the first of
+    // the $constructor_args rather than through setApi()?
 
     protected function newObject($module, $class_name, $constructor_args = array())
     {
