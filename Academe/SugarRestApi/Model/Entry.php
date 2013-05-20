@@ -382,10 +382,8 @@ class Entry extends ModelAbstract
         if ($this->api->isSuccess() && !empty($entry['entry_list'])) {
             // Parse any relationship data that has been returned.
             if (isset($entry['relationship_list'])) {
-                //$linked_data = $this->api->parseRelationshipList($entry['relationship_list']);
-
                 if (!empty($linked_data[0])) {
-                    $this->setRelationshipFields(/*$linked_data[0]*/ $entry['relationship_list']);
+                    $this->setRelationshipFields($entry['relationship_list']);
                 }
             }
 
