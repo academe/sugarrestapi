@@ -125,6 +125,30 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         return $this->apiPost('get_entries', $parameters);
     }
 
+    // Retrieve a single SugarBean based on ID.
+    // At the SugarCRM end, get_entry() calls up get_entries() with a single entry ID, so
+    // the return format of the two functions shoul dbe identical.
+
+    public function getEntry(
+        $moduleName,
+        $id,
+        $fields = array(),
+        $linkNameFields = array(),
+        $trackView = false
+    )
+    {
+        $parameters = array(
+            'session' => $this->getSessionId(),
+            'module_name' => $moduleName,
+            'id' => $id,
+            'select_fields' => $fields,
+            'link_name_to_fields_array' =>  $this->arrayToNameValues($linkNameFields),
+            'track_view' => $trackView,
+        );
+
+        return $this->apiPost('get_entry', $parameters);
+    }
+
     // Retrieve a list of beans.
     // This is the primary method for getting list of SugarBeans from Sugar.
     // The query parameter is a fragment of WHERE-clause, so to use it you need
@@ -265,27 +289,6 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         );
 
         return $this->apiPost('job_queue_run', $parameters);
-    }
-
-    // Retrieve a single SugarBean based on ID.
-    public function getEntry(
-        $moduleName,
-        $id,
-        $fields = array(),
-        $linkNameFields = array(),
-        $trackView = false
-    )
-    {
-        $parameters = array(
-            'session' => $this->getSessionId(),
-            'module_name' => $moduleName,
-            'id' => $id,
-            'select_fields' => $fields,
-            'link_name_to_fields_array' =>  $this->arrayToNameValues($linkNameFields),
-            'track_view' => $trackView,
-        );
-
-        return $this->apiPost('get_entry', $parameters);
     }
 
     // Retrieve the md5 hash of the vardef entries for a particular module.

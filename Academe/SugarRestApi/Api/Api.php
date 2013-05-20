@@ -427,11 +427,20 @@ class Api extends ApiAbstract
 
         $result = $this->parsePayload($payload);
 
-        // Transform all name/value pair nodes in the data structure to key=>value elements.
+        // Transform all name/value pair nodes anywhere in the data structure to key=>value elements.
         // Do them all, no matter where they are. From this point on, we do not have to 
         // worry about name/value pairs stuffed away in the returned data.
 
         $this->nameValuesToKeyValues($result);
+
+        // Do a similar thing for relationship structures: turn name/record pairs into name=>records
+        if (isset($result['relationship_list'])) {
+            // Reduce the name/records pairs to name=>data
+            $this->nameRecordToKeyValues($result['relationship_list']);
+
+            // Reduce the additional link_list and link_values levels that v4 has introduced.
+            $this->compactLinkListElements($result['relationship_list']);
+        }
 
         return $result;
     }
@@ -596,7 +605,7 @@ class Api extends ApiAbstract
     {
         // Only interested in arrays.
         if (is_array($value)) {
-            foreach($value as $k => $v) { //echo " $k=".print_r($v, true); echo "<br />";
+            foreach($value as $k => $v) {
                 // Is this a name/record node?
                 if (
                     is_array($v)
@@ -621,6 +630,36 @@ class Api extends ApiAbstract
         }
     }
 
+    // Strip out "link_list" and "link_value" single-element arrays from a data structure.
+    // Theye were introduced in V4 of the API (some parts of the API, at least, so are only
+    // there when retrieving Entries in some circumstances). We will take them out, as they
+    // serve no purpose.
+
+    public function compactLinkListElements(&$array)
+    {
+        // Start the walk.
+        array_walk($array, array(&$this, 'compactLinkListElementsCallback'));
+
+        // Return the processed array at the end.
+        return $array;
+    }
+
+    protected function compactLinkListElementsCallback(&$value, $key)
+    {
+        // Strip out the link_list level, if it is there.
+        if (is_array($value) && count($value) == 1 && isset($value['link_list'])) {
+            $value = $value['link_list'];
+        }
+
+        // Strip out the link_value level, if it is there.
+        if (is_array($value) && count($value) == 1 && isset($value['link_value'])) {
+            $value = $value['link_value'];
+        }
+
+        if (is_array($value)) {
+            array_walk($value, array(&$this, 'compactLinkListElementsCallback'));
+        }
+    }
 
     // Convert a simple array of key=>value items into a name/value array
     // required by many of the SugarCRM API functions.
@@ -642,16 +681,31 @@ class Api extends ApiAbstract
 
     // Parse a relationship list returned from the API in an entry list to something 
     // more sensible.
+    // FIXME properly - this functino is really screwed up, and works only by chance, and then
+    // not always.
+    // It seems to be V4 of the API that has intruduced the "link_list" and "link_value" layers
+    // to the relationship structure. They are both a single element in their parent array and
+    // have no siblings, so should be easy enough to strip out.
 
-    public function parseRelationshipList($entry_list)
+    public function parseRelationshipList__old($relationship_list)
     {
         $linked_data = array();
 
-        //$this->nameRecordToKeyValues($entry_list);
+        die('no longer used');
 
-        if (!empty($entry_list['relationship_list'])) {
-            foreach($entry_list['relationship_list'] as $master_sequence => $link_list_wrapper) {
-                if (!empty($link_list_wrapper['link_list']) && is_array($link_list_wrapper['link_list'])) {
+        $this->nameRecordToKeyValues($relationship_list);
+
+        if (is_array($relationship_list)) {
+            foreach($relationship_list as $record_seq => $link_list_wrapper) {
+
+                $linked_data = $this->compactLinkListElements($link_list_wrapper);
+
+                continue;
+
+                if (!empty($link_list_wrapper['link_list']) && is_array($link_list_wrapper['link_list'])) { 
+
+                    // FIXME: we should use $this->nameRecordToKeyValues() in this section too.
+
                     foreach($link_list_wrapper['link_list'] as $list_sequence => $list) {
                         if (!empty($list['records']) && is_array($list['records'])) {
                             $relationship_name = $list['name'];
@@ -673,7 +727,7 @@ class Api extends ApiAbstract
                                         : $relationship_name
                                     );
 
-                                    $linked_data[$master_sequence][$alias][] = $record_data;
+                                    $linked_data[$record_seq][$alias][] = $record_data;
                                 }
                             }
                         }

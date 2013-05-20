@@ -396,8 +396,11 @@ class EntryList extends ModelAbstract implements \Countable, \Iterator
         // be an element in the relationship_list:
         //  []['link_list'][]['name'=>'relationship_name','records'=>['link_value'=>name/value-list-of-fields] ]
 
-        if (!empty($this->api)) {
-            $linked_data = $this->api->parseRelationshipList($entry_list);
+        if (isset($entry_list['relationship_list'])) {
+            //if (!empty($this->api)) {
+                //$linked_data = $this->api->parseRelationshipList($entry_list['relationship_list']);
+                $linked_data = $entry_list['relationship_list'];
+            //}
         }
 
         // Take each entry returned from the API, and turn them into a separate entry class.
