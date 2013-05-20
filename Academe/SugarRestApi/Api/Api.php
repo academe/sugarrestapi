@@ -579,6 +579,49 @@ class Api extends ApiAbstract
         }
     }
 
+    // Similar to name/value pairs, we also want to reduce name/record pairs to a simpler
+    // key=>value structure.
+    // This will just apply to relartionship structures.
+
+    public function nameRecordToKeyValues(&$array)
+    {
+        // Start the walk.
+        array_walk($array, array(&$this, 'nameRecordToKeyValuesCallback'));
+
+        // Return the processed array at the end.
+        return $array;
+    }
+
+    protected function nameRecordToKeyValuesCallback(&$value, $key)
+    {
+        // Only interested in arrays.
+        if (is_array($value)) {
+            foreach($value as $k => $v) { //echo " $k=".print_r($v, true); echo "<br />";
+                // Is this a name/record node?
+                if (
+                    is_array($v)
+                    && count($v) == 2
+                    && isset($v['name'])
+                    && is_string($v['name'])
+                    && isset($v['records']) // Will this miss NULL values?
+                    && is_numeric($k)
+                ) {
+                    $alias = (
+                        isset($this->relationship_aliases[$v['name']])
+                        ? $this->relationship_aliases[$v['name']]
+                        : $v['name']
+                    );
+
+                    $value[$alias] = $v['records'];
+                    unset($value[$k]);
+                }
+            }
+
+            array_walk($value, array(&$this, 'nameRecordToKeyValuesCallback'));
+        }
+    }
+
+
     // Convert a simple array of key=>value items into a name/value array
     // required by many of the SugarCRM API functions.
     // CHECKME: this seems to be mixing up several different things - name/value and ids?
@@ -603,6 +646,8 @@ class Api extends ApiAbstract
     public function parseRelationshipList($entry_list)
     {
         $linked_data = array();
+
+        //$this->nameRecordToKeyValues($entry_list);
 
         if (!empty($entry_list['relationship_list'])) {
             foreach($entry_list['relationship_list'] as $master_sequence => $link_list_wrapper) {
@@ -637,10 +682,13 @@ class Api extends ApiAbstract
                     // No 'link_list' in the wrapper wrapper here.
                     // The format of the linked list data varies depending on whether we are
                     // fetching for a single entry or multiple entries.
-                    // And it also varies according to which API function is called. Th lack of
+                    // And it also varies according to which API function is called. The lack of
                     // documentation is infuriating.
+                    // There are at least three different formats 
+                    return $this->nameRecordToKeyValues($entry_list['relationship_list']);
 
-                    //$master_sequence = 0;
+                    /*
+                    $master_sequence = 0;
                     foreach($link_list_wrapper as $list_sequence => $list) {
                         if (!empty($list['records']) && is_array($list['records'])) {
                             $relationship_name = $list['name'];
@@ -659,10 +707,11 @@ class Api extends ApiAbstract
                                     ? $this->relationship_aliases[$relationship_name]
                                     : $relationship_name
                                 );
-                                $linked_data[$list_sequence][$alias][] = $record_data;
+                                $linked_data[$master_sequence][$alias][] = $record_data;
                             }
                         }
                     }
+                    */
                 }
             }
         }
