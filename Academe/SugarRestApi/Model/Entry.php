@@ -383,7 +383,7 @@ class Entry extends ModelAbstract
             // Parse any relationship data that has been returned.
             if (isset($entry['relationship_list'])) {
                 if (!empty($entry['relationship_list'][0])) {
-                    $this->setRelationshipFields($entry['relationship_list']);
+                    $this->setRelationshipFields($entry['relationship_list'][0]);
                 }
             }
 
