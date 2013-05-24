@@ -431,10 +431,10 @@ class Api extends ApiAbstract
         // Do them all, no matter where they are. From this point on, we do not have to 
         // worry about name/value pairs stuffed away in the returned data.
 
-        $this->nameValuesToKeyValues($result);
+        if (is_array($result)) $this->nameValuesToKeyValues($result);
 
         // Do a similar thing for relationship structures: turn name/record pairs into name=>records
-        if (isset($result['relationship_list'])) {
+        if (isset($result['relationship_list']) && is_array($result['relationship_list'])) {
             // Reduce the name/records pairs to name=>data
             $this->nameRecordToKeyValues($result['relationship_list']);
 
