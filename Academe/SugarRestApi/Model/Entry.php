@@ -348,8 +348,10 @@ class Entry extends ModelAbstract
         if ($this->api->isSuccess()) {
             // We get back the saved fields that we sent, along with any validation that
             // may have been applied to them.
-            $this->setEntry($entry);
-
+            // TODO: we need to look at the logic here a big closer.
+            // The CRM returns an array('id'=>'{id}','entry_list'=>name/value data, converted to key=>value)
+            $entry['entry_list']['id'] = $entry['id'];
+            $this->setEntry($entry['entry_list']);
             $this->_exists = true;
         }
 
