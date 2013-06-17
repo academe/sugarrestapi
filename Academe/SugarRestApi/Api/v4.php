@@ -450,6 +450,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         $relatedModuleLinkNameFields = array(),
         $deleted = false,
         $orderBy = '',
+        $offset = 0,
         $limit = false
     )
     {
@@ -463,6 +464,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
             'related_module_link_name_to_fields_array' => $this->arrayToNameValues($relatedModuleLinkNameFields),
             'deleted' => $deleted,
             'order_by' => $orderBy,
+            'offset' => $offset,
             'limit' => $limit,
         );
 
@@ -568,7 +570,7 @@ class v4 extends \Academe\SugarRestApi\Api\Api
             $note = $id_or_note;
         } else {
             $note = array(
-                'id' => $id,
+                'id' => $id_or_note,
                 'filename' => $filename,
                 'file' => base64_encode($file),
                 'related_module_id' => $moduleId,
