@@ -73,9 +73,7 @@ class EntryList extends ModelAbstract implements \Countable, \Iterator
         // fetch the first page. This gives us a starting point.
         if ( ! $this->fetchIsComplete() && $this->getTotalCount() == 0) {
             $this->fetchPage();
-            //echo "fetchPage()";
         } else {
-            //echo "no-fetchPage()";
         }
 
         return $this->getTotalCount();
@@ -206,10 +204,13 @@ class EntryList extends ModelAbstract implements \Countable, \Iterator
         // make sure that hard limit is a ceiling. This will enable for-loops
         // to stop at the correct point.
 
+        // Temp fix: total_count is not always set.
+        $count = max($this->total_count, count($this->entry_list));
+
         if (!empty($this->hard_limit)) {
-            return min($this->total_count, $this->hard_limit);
+            return min($count, $this->hard_limit);
         } else {
-            return $this->total_count;
+            return $count;
         }
     }
 
