@@ -424,7 +424,6 @@ class Api extends ApiAbstract
         $payload = $this->callRest($postData, 'POST');
 
         // TODO: Here we check that the call succeeded, and raise exceptions as needed.
-
         $result = $this->parsePayload($payload);
 
         // Transform all name/value pair nodes anywhere in the data structure to key=>value elements.

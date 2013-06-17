@@ -418,7 +418,7 @@ class EntryList extends ModelAbstract implements \Countable, \Iterator
                 //$this->entry_list[$Entry->id] = $Entry;
                 $this->addEntry($Entry->id, $Entry);
             }
-        } elseif (is_array($entry_list)) {
+        } elseif (is_array($entry_list) && !isset($entry_list['entry_list'])) {
             // Not API data - just arrays of entry arrays.
             foreach($entry_list as $entry_fields) {
                 // Create a new Entry with this data.
