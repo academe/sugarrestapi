@@ -71,8 +71,11 @@ class EntryList extends ModelAbstract implements \Countable, \Iterator
     {
         // If we have not started fetching from the CRM yet, then we won't have a count, so
         // fetch the first page. This gives us a starting point.
-        if (!$this->fetchIsComplete() && $this->getTotalCount() == 0) {
+        if ( ! $this->fetchIsComplete() && $this->getTotalCount() == 0) {
             $this->fetchPage();
+            //echo "fetchPage()";
+        } else {
+            //echo "no-fetchPage()";
         }
 
         return $this->getTotalCount();
@@ -82,7 +85,7 @@ class EntryList extends ModelAbstract implements \Countable, \Iterator
     public function rewind()
     {
         // Get at least one page of data to start things off.
-        if (!$this->fetchIsComplete() && $this->getTotalCount() == 0) {
+        if ( ! $this->fetchIsComplete() && $this->getTotalCount() == 0) {
             $this->fetchPage();
         }
 
