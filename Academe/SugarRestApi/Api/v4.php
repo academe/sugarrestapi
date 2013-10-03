@@ -42,7 +42,16 @@ class v4 extends \Academe\SugarRestApi\Api\Api
         if ($this->isSuccess()) {
             // Extract the session ID and user ID.
             $this->session_id = $result['id'];
-            $this->user_id = $result['name_value_list']['user_id']['value'];
+
+            // 2013-10-03 JDJ There seems to be some kind of different behaviour between PHP5.3 and PHP5.4
+            // here. 5.3 sees ['user_id'} as an array of name/value elements. PHP5.4 sees it as a string
+            // containing the value only. Putting a quick and uncomfortable fix in for now, until I work out
+            // what is going on and what the knock-on effects are in other places.
+            $this->user_id = (
+                ! empty($result['name_value_list']['user_id']['value'])
+                ? $result['name_value_list']['user_id']['value']
+                : $result['name_value_list']['user_id']
+            );
             return true;
         } else {
             return false;
