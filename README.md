@@ -79,7 +79,7 @@ This, in your main composer.json will load the package into your project via com
 
 Merge those sections into your existing composer.json then issue `php composer.phar update`
 
-## Example Use
+## Example Use (NOTE: this section is out of date - see "minimal use" example above)
 
 This example ignores caching of the SugarCRM session, which can be shared between any number 
 of pages and requests once a connection (a login) is done. It also assumes a PSR-0 autoloader 
