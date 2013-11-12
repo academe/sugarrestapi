@@ -1,5 +1,10 @@
 # SugarRestApi.php
 
+_**2013-11-12 This library is for the SugarCRM 6.x series and not foe 7.x. For v7 SugarCRM has adopted
+a proper RESTful approach with oauth token-based authentication. Since there will be no V7 CE available
+for download for some time (and may never be available) then 6.x is likely the last version that
+will be supported by this library.**_
+
 _**2013-04-25 Please note - these examples are out-of-date as I've restructured the classes somewhat. 
 I've tried to implement a factory to return entries and lists of entries, but it's all WIP at the moment. 
 For example, I've moved from Resty to Guzzle, but we have a middle transport abstract to standardise 
