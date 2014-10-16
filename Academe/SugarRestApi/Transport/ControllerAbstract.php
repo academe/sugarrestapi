@@ -24,7 +24,7 @@ abstract class ControllerAbstract
     // to set these, or created more template placeholders.
     // *** DEPRECATED ***
     public $entryPointPlaceholders = array(
-        'protocol' => 'http',
+        'protocol' => 'https',
         'domain' => '',
         'path' => '',
         'version' => 'v4',
