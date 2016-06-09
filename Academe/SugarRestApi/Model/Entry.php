@@ -90,6 +90,11 @@ class Entry extends ModelAbstract
             // if no alias was provided).
 
             $entry_list = new $this->api->entrylist_classname($this->api, $relationship);
+            
+            // Set the EntryList to be complete, so looping over the entries does
+            // not attempt to do another fetch from the CRM.
+            $entry_list->list_complete = true;
+
             $this->_relationships[$alias] = $entry_list;
         }
         //$this->_relationships = $relationships;
