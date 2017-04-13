@@ -42,7 +42,7 @@ class ControllerGuzzle extends ControllerAbstract
         $this->setClient();
 
         // Clear the error message.
-        $this->resetErrorMessage = '';
+        $this->resetErrorMessage();
 
         $request = $this->client
             ->post($path)
