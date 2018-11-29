@@ -17,10 +17,14 @@ class ControllerGuzzle extends ControllerAbstract
         // Instantiate the controller if necessary. 
         if (empty($this->client)) {
             // Build the URL.
+
             $this->buildEntryPoint();
 
             // Instantiate the client REST controller with the URL.
-            $this->client = new \Guzzle\Http\Client($this->entryPointUrl);
+
+            $this->client = new \GuzzleHttp\Client([
+                'base_uri' => $this->entryPointUrl,
+            ]);
         }
     }
 
@@ -44,22 +48,31 @@ class ControllerGuzzle extends ControllerAbstract
         // Clear the error message.
         $this->resetErrorMessage();
 
-        $request = $this->client
-            ->post($path)
-            ->addPostFields($data);
-
         try {
-            // Send the request for a resource and get the result back, with the assumption that it is JSON.
-            $response = $request->send();
-            $result = $response->json();
+            // Send the request for a resource and get the result back,
+            // with the assumption that it is JSON.
+
+            //$response = $request->send();
+            $response = $this->client->request('POST', $path, [
+                'form_params' => $data,
+            ]);
+
+            $body = $response->getBody();
+            $result = json_decode((string)$body, true);
+
+            if (json_last_error() != \JSON_ERROR_NONE) {
+                // Failure to decode the response as JSON.
+                $result = null;
+                $this->errorMessage = $e->getMessage();
+            }
         }
-        catch (\Guzzle\Http\Exception\BadResponseException $e) {
-            // 4xx or 5xx
+        catch (\GuzzleHttp\Exception\ClientException $e) {
+            // 4xx
             $result = null;
             $this->errorMessage = $e->getMessage();
         }
-        catch (\Guzzle\Common\Exception\RuntimeException $e) {
-            // Failure to decode the response as JSON.
+        catch (\GuzzleHttp\Exception\ServerException $e) {
+            // 5xx
             $result = null;
             $this->errorMessage = $e->getMessage();
         }
