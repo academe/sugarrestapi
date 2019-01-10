@@ -63,7 +63,7 @@ class ControllerGuzzle extends ControllerAbstract
             if (json_last_error() != \JSON_ERROR_NONE) {
                 // Failure to decode the response as JSON.
                 $result = null;
-                $this->errorMessage = $e->getMessage();
+                $this->errorMessage = json_last_error();
             }
         }
         catch (\GuzzleHttp\Exception\ClientException $e) {
