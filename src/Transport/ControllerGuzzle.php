@@ -24,6 +24,7 @@ class ControllerGuzzle extends ControllerAbstract
 
             $this->client = new \GuzzleHttp\Client([
                 'base_uri' => $this->entryPointUrl,
+                'verify' => false,
             ]);
         }
     }
